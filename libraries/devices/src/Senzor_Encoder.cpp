@@ -95,6 +95,8 @@ void Rencoder::detach() {
   stopISR();
   if (_pinA >= 0) pinMode(_pinA, INPUT);
   if (_pinB >= 0) pinMode(_pinB, INPUT);
+  _pinA = -1;
+  _pinB = -1;
 }
 
 void Rencoder::reset() {

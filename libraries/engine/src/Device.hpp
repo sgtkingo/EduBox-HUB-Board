@@ -97,6 +97,7 @@ public:
   virtual ~Device() = default;
 
   virtual DeviceType deviceType() const = 0;
+  virtual size_t requiredPinCount() const { return 1; }
   virtual bool init() { return true; }
   virtual std::vector<DeviceValue> update() { return {}; }
   virtual void config(DeviceParameter* parameters = nullptr, int count = 0) {

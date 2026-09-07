@@ -15,13 +15,18 @@ void TwoColorMini_reset();
 class TwoColorMini : public Actuator {
 public:
   DeviceType deviceType() const override { return DeviceType::MiniTwoColorLed; }
+  size_t requiredPinCount() const override { return 2; }
 
   TwoColorMini(int pinRed = -1, int pinGreen = -1, char color = 'r', int Brightness = 0)
     : _pinRed(pinRed), _pinGreen(pinGreen), _color(color), _Brightness(Brightness) {}
 
   void attach(const std::vector<int>& pins) override {
-    if (pins.size() >= 1) _pinRed   = pins[0];
-    if (pins.size() >= 2) _pinGreen = pins[1];
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    _pinRed = pins[0];
+    _pinGreen = pins[1];
     TwoColorMini_setPins(_pinRed, _pinGreen);
   }
 

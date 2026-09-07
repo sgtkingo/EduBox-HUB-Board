@@ -77,6 +77,11 @@ vscp::Response VscpDeviceRouter::handleConnect(const vscp::Request& request) {
   if (rawPins.length() == 0) rawPins = request.value("pin");
   std::vector<int> pins;
   if (!parsePins(rawPins, pins)) return vscp::Response::fail("Invalid pins");
+  const size_t requiredPinCount = registered->device->requiredPinCount();
+  if (pins.size() != requiredPinCount) {
+    return vscp::Response::fail(
+        String("Invalid pin count: expected ") + static_cast<unsigned int>(requiredPinCount));
+  }
 
   if (registered->connected) registered->device->detach();
   registered->device->attach(pins);

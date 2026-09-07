@@ -7,8 +7,49 @@
 
 #if defined(STDIO_H_ENV) && VSCP_ENABLE_STDIO
 
-#include <climits>
 #include <stdexcept>
+
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#else
+#include <poll.h>
+#include <unistd.h>
+#endif
+
+namespace {
+
+bool inputReady(FILE* input) {
+#ifdef _WIN32
+  const int descriptor = _fileno(input);
+  if (descriptor < 0) return false;
+
+  const intptr_t rawHandle = _get_osfhandle(descriptor);
+  if (rawHandle == -1) return false;
+  HANDLE handle = reinterpret_cast<HANDLE>(rawHandle);
+  const DWORD type = GetFileType(handle);
+  if (type == FILE_TYPE_DISK) return true;
+  if (type == FILE_TYPE_PIPE) {
+    DWORD available = 0;
+    return PeekNamedPipe(handle, nullptr, 0, nullptr, &available, nullptr) && available > 0;
+  }
+  if (type == FILE_TYPE_CHAR) {
+    COMSTAT status{};
+    DWORD errors = 0;
+    if (ClearCommError(handle, &errors, &status)) return status.cbInQue > 0;
+    return WaitForSingleObject(handle, 0) == WAIT_OBJECT_0;
+  }
+  return false;
+#else
+  const int descriptor = fileno(input);
+  if (descriptor < 0) return false;
+  pollfd descriptorState{descriptor, POLLIN, 0};
+  return poll(&descriptorState, 1, 0) > 0 &&
+         (descriptorState.revents & (POLLIN | POLLHUP)) != 0;
+#endif
+}
+
+}  // namespace
 
 namespace vscp {
 
@@ -24,35 +65,47 @@ void StdioLogSink::writeLogLine(const String& message) {
 
 StdioTransport::StdioTransport(FILE* input, FILE* output, size_t maxMessageSize,
                                LogSink* logSink)
-    : Transport(logSink), input_(input), output_(output), maxMessageSize_(maxMessageSize),
-      buffer_(maxMessageSize + 2, '\0') {
+    : Transport(logSink), input_(input), output_(output), maxMessageSize_(maxMessageSize) {
   if (!input_ || !output_) throw std::invalid_argument("VSCP stdio streams must not be null");
-  if (buffer_.size() > static_cast<size_t>(INT_MAX)) {
-    throw std::length_error("VSCP stdio buffer exceeds the supported size");
+  if (std::setvbuf(input_, nullptr, _IONBF, 0) != 0) {
+    throw std::runtime_error("Unable to configure non-blocking VSCP input buffering");
   }
-}
-
-void StdioTransport::discardLineRemainder() {
-  int character = 0;
-  while ((character = std::fgetc(input_)) != '\n' && character != EOF) {}
+  buffer_.reserve(maxMessageSize_);
 }
 
 ReadStatus StdioTransport::readLineImpl(String& message) {
   message.clear();
-  if (!std::fgets(buffer_.data(), static_cast<int>(buffer_.size()), input_)) {
-    return ReadStatus::NoData;
+  bool overflowDetected = false;
+  while (inputReady(input_)) {
+    const int value = std::fgetc(input_);
+    if (value == EOF) break;
+    const char character = static_cast<char>(value);
+
+    if (character == '\n' || character == '\r' || character == 0) {
+      if (overflowed_) {
+        overflowed_ = false;
+        if (overflowDetected) return ReadStatus::MessageTooLong;
+        continue;
+      }
+      if (buffer_.empty()) continue;
+
+      message.swap(buffer_);
+      detail::trimString(message);
+      if (!message.empty()) return ReadStatus::Message;
+      continue;
+    }
+
+    if (overflowed_) continue;
+    if (buffer_.length() >= maxMessageSize_) {
+      buffer_.clear();
+      overflowed_ = true;
+      overflowDetected = true;
+      continue;
+    }
+    if (character >= 32 && character <= 126) buffer_ += character;
   }
 
-  message = buffer_.data();
-  const bool completeLine = !message.empty() && message[message.length() - 1] == '\n';
-  if (!completeLine && !std::feof(input_)) {
-    discardLineRemainder();
-    return ReadStatus::MessageTooLong;
-  }
-
-  detail::trimString(message);
-  if (message.length() > maxMessageSize_) return ReadStatus::MessageTooLong;
-  return message.empty() ? ReadStatus::NoData : ReadStatus::Message;
+  return overflowDetected ? ReadStatus::MessageTooLong : ReadStatus::NoData;
 }
 
 bool StdioTransport::writeLineImpl(const String& message) {

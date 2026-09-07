@@ -20,8 +20,12 @@ public:
 
   // přiřazení pinů přes attach (SDA, SCL)
   void attach(const std::vector<int>& pins) override {
-    if (pins.size() >= 1) _sda = pins[0];
-    if (pins.size() >= 2) _scl = pins[1];
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    _sda = pins[0];
+    _scl = pins[1];
   }
 
   // uvolnění pinů a ukončení I2C rozhraní
@@ -29,12 +33,15 @@ public:
     if (_sda >= 0) pinMode(_sda, INPUT);
     if (_scl >= 0) pinMode(_scl, INPUT);
     I2C.end();
+    _sda = -1;
+    _scl = -1;
   }
 
   bool init() override;
   std::vector<KV> update() override;
   void reset() override;
   DeviceType deviceType() const override { return DeviceType::Bmp180; }
+  size_t requiredPinCount() const override { return 2; }
 
   // Konfigurační parametry (např. Gain)
   void config(Param* params = nullptr, int count = 0) override {

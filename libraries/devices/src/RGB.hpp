@@ -14,15 +14,20 @@ void RGB_reset();
 class RGB : public Actuator {
 public:
   DeviceType deviceType() const override { return DeviceType::RgbLed; }
+  size_t requiredPinCount() const override { return 3; }
 
   RGB(int pinR = -1, int pinG = -1, int pinB = -1, int BrigR = 0, int BrigG = 0, int BrigB = 0)
     : _pinR(pinR), _pinG(pinG), _pinB(pinB),
       _BrigR(BrigR), _BrigG(BrigG), _BrigB(BrigB) {}
 
   void attach(const std::vector<int>& pins) override {
-    if (pins.size() >= 1) _pinR = pins[0];
-    if (pins.size() >= 2) _pinG = pins[1];
-    if (pins.size() >= 3) _pinB = pins[2];
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    _pinR = pins[0];
+    _pinG = pins[1];
+    _pinB = pins[2];
     RGB_setPins(_pinR, _pinG, _pinB);
   }
 

@@ -20,6 +20,7 @@ public:
   void attach(const std::vector<int>& pins) override;
   void detach() override;
   DeviceType deviceType() const override { return DeviceType::StepperMotor; }
+  size_t requiredPinCount() const override { return 4; }
   bool init() override;
   void control(Param* params = nullptr, int count = 0) override;
   void reset() override;

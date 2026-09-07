@@ -21,9 +21,13 @@ public:
   }
 
   void attach(const std::vector<int>& pins) override {
-    if (pins.size() >= 1) xPin_ = pins[0];
-    if (pins.size() >= 2) yPin_ = pins[1];
-    if (pins.size() >= 3) switchPin_ = pins[2];
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    xPin_ = pins[0];
+    yPin_ = pins[1];
+    switchPin_ = pins[2];
     pinsInitialized_ = false;
     calibrated_ = false;
   }
@@ -32,6 +36,9 @@ public:
     if (xPin_ >= 0) pinMode(xPin_, INPUT);
     if (yPin_ >= 0) pinMode(yPin_, INPUT);
     if (switchPin_ >= 0) pinMode(switchPin_, INPUT);
+    xPin_ = -1;
+    yPin_ = -1;
+    switchPin_ = -1;
     pinsInitialized_ = false;
     calibrated_ = false;
   }
@@ -39,6 +46,7 @@ public:
   void reset() override { calibrated_ = false; }
   std::vector<KV> update() override;
   DeviceType deviceType() const override { return DeviceType::Joystick; }
+  size_t requiredPinCount() const override { return 3; }
   bool init() override { return true; }
 
   /** Changes ADC resolution and joystick dead-zone configuration. */

@@ -16,18 +16,25 @@ public:
 
 
     void attach(const std::vector<int>& pins) override {
-      if (pins.size() >= 1) _trig = pins[0];
-      if (pins.size() >= 2) _echo = pins[1];
+      if (pins.size() != requiredPinCount()) {
+        detach();
+        return;
+      }
+      _trig = pins[0];
+      _echo = pins[1];
     }
     void detach() override {
       if (_trig >= 0) pinMode(_trig, INPUT);
       if (_echo >= 0) pinMode(_echo, INPUT);
+      _trig = -1;
+      _echo = -1;
     }
 
   bool            init()   override;                 
   void            reset()  override {}
   std::vector<KV> update() override;                
   DeviceType deviceType() const override { return DeviceType::UltrasonicHcSr04; }
+  size_t requiredPinCount() const override { return 2; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

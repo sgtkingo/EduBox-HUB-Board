@@ -20,14 +20,20 @@ public:
     : _sda(sda), _scl(scl), _itime(600), _gain(4) {}
 
     void attach(const std::vector<int>& pins) override {
-      if (pins.size() >= 1) _sda = pins[0];
-      if (pins.size() >= 2) _scl = pins[1];
+      if (pins.size() != requiredPinCount()) {
+        detach();
+        return;
+      }
+      _sda = pins[0];
+      _scl = pins[1];
     }
     void detach() override {
       if (_sda >= 0) pinMode(_sda, INPUT);
       if (_scl >= 0) pinMode(_scl, INPUT);
       tcs.disable();              
       I2C.end();    
+      _sda = -1;
+      _scl = -1;
       
       _tcsEnabled = false;
       _readyAtMs  = 0;
@@ -39,6 +45,7 @@ public:
   void            reset()  override;         // re-begin na stejné adrese
   std::vector<KV> update() override;         // vrací R,G,B (0–255)
   DeviceType deviceType() const override { return DeviceType::ColorTcs34725; }
+  size_t requiredPinCount() const override { return 2; }
 
   // konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

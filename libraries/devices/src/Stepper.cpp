@@ -13,6 +13,10 @@ void Stepper::releasePins_() {
   if (_pin2 >= 0) pinMode(_pin2, INPUT);
   if (_pin3 >= 0) pinMode(_pin3, INPUT);
   if (_pin4 >= 0) pinMode(_pin4, INPUT);
+  _pin1 = -1;
+  _pin2 = -1;
+  _pin3 = -1;
+  _pin4 = -1;
 }
 
 // Nastavení driveru pokud jsou správné piny
@@ -35,21 +39,24 @@ void Stepper::ensureDriver_() {
 
 // připojení – nastav piny a vytvoř driver
 void Stepper::attach(const std::vector<int>& pins) {
-  // vypnout a uvolnit starý driver
-  if (_stp) { _stp->stop(); delete _stp; _stp = nullptr; }
+  detach();
+  if (pins.size() != requiredPinCount()) return;
 
-  if (pins.size() > 0) _pin1 = pins[0];
-  if (pins.size() > 1) _pin2 = pins[1];
-  if (pins.size() > 2) _pin3 = pins[2];
-  if (pins.size() > 3) _pin4 = pins[3];
+  _pin1 = pins[0];
+  _pin2 = pins[1];
+  _pin3 = pins[2];
+  _pin4 = pins[3];
 
   ensureDriver_();
 }
 
 // odpojení – vypnout a uvolnit piny
 void Stepper::detach() {
-  _stp->stop();
-  if (_stp) { delete _stp; _stp = nullptr; }
+  if (_stp) {
+    _stp->stop();
+    delete _stp;
+    _stp = nullptr;
+  }
   releasePins_();
 }
 

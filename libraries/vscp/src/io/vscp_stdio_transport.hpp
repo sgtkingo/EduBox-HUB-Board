@@ -1,6 +1,6 @@
 /**
  * @file vscp_stdio_transport.hpp
- * @brief Blocking VSCP line transport for standard C FILE streams.
+ * @brief Non-blocking VSCP line transport for standard C FILE streams.
  */
 
 #pragma once
@@ -13,7 +13,6 @@
 #include "vscp_transport.hpp"
 
 #include <cstdio>
-#include <vector>
 
 namespace vscp {
 
@@ -36,12 +35,11 @@ protected:
   bool writeLineImpl(const String& message) override;
 
 private:
-  void discardLineRemainder();
-
   FILE* input_;
   FILE* output_;
   size_t maxMessageSize_;
-  std::vector<char> buffer_;
+  String buffer_;
+  bool overflowed_ = false;
 };
 
 }  // namespace vscp

@@ -16,6 +16,18 @@ public:
   void            reset()  override{};
   std::vector<KV> update() override;                 // vrací {"bpm", ...}
   DeviceType deviceType() const override { return DeviceType::Heartbeat; }
+  void attach(const std::vector<int>& pins) override {
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    _pin = pins[0];
+    pinMode(_pin, INPUT);
+  }
+  void detach() override {
+    if (_pin >= 0) pinMode(_pin, INPUT);
+    _pin = -1;
+  }
 
 private:
   int _pin;

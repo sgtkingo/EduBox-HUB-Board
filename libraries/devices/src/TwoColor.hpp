@@ -13,14 +13,19 @@ void TwoColor_reset();
 class TwoColor : public Actuator {
 public:
   DeviceType deviceType() const override { return DeviceType::TwoColorLed; }
+  size_t requiredPinCount() const override { return 2; }
 
   TwoColor(int pinRed, int pinGreen, char color, int Brightness)
     : _pinRed(pinRed), _pinGreen(pinGreen), _color(color), _Brightness(Brightness) {}
 
   // připojení pinů 
   void attach(const std::vector<int>& pins) override {
-    if (pins.size() >= 1) _pinRed   = pins[0];
-    if (pins.size() >= 2) _pinGreen = pins[1];
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    _pinRed = pins[0];
+    _pinGreen = pins[1];
   }
 
   // konfigurační parametry

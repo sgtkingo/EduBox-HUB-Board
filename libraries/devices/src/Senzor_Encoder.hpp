@@ -25,10 +25,15 @@ public:
   void reset() override;
   std::vector<KV> update() override;
   DeviceType deviceType() const override { return DeviceType::RotaryEncoder; }
+  size_t requiredPinCount() const override { return 2; }
 
   void attach(const std::vector<int>& pins) override {
-    if (pins.size() >= 1) _pinB = pins[0];
-    if (pins.size() >= 2) _pinA = pins[1];
+    if (pins.size() != requiredPinCount()) {
+      detach();
+      return;
+    }
+    _pinB = pins[0];
+    _pinA = pins[1];
   }
 
   void detach() override;

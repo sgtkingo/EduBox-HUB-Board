@@ -47,10 +47,10 @@ ReadStatus StreamTransport::readLineImpl(String& message) {
 }
 
 bool StreamTransport::writeLineImpl(const String& message) {
-  const bool separatorWritten = stream_.print('\n') > 0;
-  const bool messageWritten = stream_.println(message) > 0;
+  const bool messageWritten = stream_.print(message) > 0;
+  const bool terminatorWritten = stream_.print('\n') > 0;
   stream_.flush();
-  return separatorWritten && messageWritten;
+  return messageWritten && terminatorWritten;
 }
 
 }  // namespace vscp

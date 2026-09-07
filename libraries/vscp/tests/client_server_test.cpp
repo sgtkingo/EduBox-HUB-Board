@@ -6,6 +6,7 @@
 #include <deque>
 #include <map>
 #include <mutex>
+#include <sstream>
 #include <thread>
 
 namespace {
@@ -36,9 +37,70 @@ private:
   std::deque<vscp::String> messages_;
 };
 
+void testIostreamMessageLimit() {
+  std::istringstream terminatedInput("123456789\n?x=1\n");
+  std::ostringstream terminatedOutput;
+  vscp::IostreamTransport terminatedTransport(terminatedInput, terminatedOutput, 8);
+  vscp::String message;
+  assert(terminatedTransport.readLine(message) == vscp::ReadStatus::MessageTooLong);
+  assert(terminatedTransport.readLine(message) == vscp::ReadStatus::Message);
+  assert(message == "?x=1");
+
+  std::istringstream unterminatedInput("123456789");
+  std::ostringstream unterminatedOutput;
+  vscp::IostreamTransport unterminatedTransport(unterminatedInput, unterminatedOutput, 8);
+  assert(unterminatedTransport.readLine(message) == vscp::ReadStatus::MessageTooLong);
+  assert(unterminatedTransport.readLine(message) == vscp::ReadStatus::NoData);
+}
+
+void testDesktopClientTimeouts() {
+  std::istringstream iostreamInput;
+  std::ostringstream iostreamOutput;
+  vscp::IostreamTransport iostreamTransport(iostreamInput, iostreamOutput);
+  vscp::Client iostreamClient(iostreamTransport, 10);
+  const auto iostreamStartedAt = std::chrono::steady_clock::now();
+  const vscp::ResponseStatus iostreamResponse = iostreamClient.init();
+  const auto iostreamElapsed = std::chrono::steady_clock::now() - iostreamStartedAt;
+  assert(iostreamResponse.error == "Response timeout");
+  assert(iostreamElapsed < std::chrono::milliseconds(250));
+
+  const char* stdioInputPath = "vscp_stdio_input_test.tmp";
+  const char* stdioOutputPath = "vscp_stdio_output_test.tmp";
+  FILE* stdioSeed = std::fopen(stdioInputPath, "wb");
+  assert(stdioSeed != nullptr);
+  assert(std::fputs("123456789\n?x=1\n", stdioSeed) >= 0);
+  std::fclose(stdioSeed);
+
+  FILE* stdioInput = std::fopen(stdioInputPath, "rb");
+  FILE* stdioOutput = std::fopen(stdioOutputPath, "w+b");
+  assert(stdioInput != nullptr);
+  assert(stdioOutput != nullptr);
+  {
+    vscp::StdioTransport stdioTransport(stdioInput, stdioOutput, 8);
+    vscp::String message;
+    assert(stdioTransport.readLine(message) == vscp::ReadStatus::MessageTooLong);
+    assert(stdioTransport.readLine(message) == vscp::ReadStatus::Message);
+    assert(message == "?x=1");
+
+    vscp::Client stdioClient(stdioTransport, 10);
+    const auto stdioStartedAt = std::chrono::steady_clock::now();
+    const vscp::ResponseStatus stdioResponse = stdioClient.init();
+    const auto stdioElapsed = std::chrono::steady_clock::now() - stdioStartedAt;
+    assert(stdioResponse.error == "Response timeout");
+    assert(stdioElapsed < std::chrono::milliseconds(250));
+  }
+  std::fclose(stdioInput);
+  std::fclose(stdioOutput);
+  std::remove(stdioInputPath);
+  std::remove(stdioOutputPath);
+}
+
 }  // namespace
 
 int main() {
+  testIostreamMessageLimit();
+  testDesktopClientTimeouts();
+
   const vscp::String initRequest = vscp::Codec::buildRequest(
       vscp::Command::Init,
       vscp::Parameters{{"api", vscp::API_VERSION}, {"app", "signal-twin"}});

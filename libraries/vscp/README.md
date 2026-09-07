@@ -28,13 +28,18 @@ RX/TX pins belong to the consuming application. EduBox defines them in
 Arduino builds are detected through the `ARDUINO` macro and expose
 `vscp::StreamTransport`. Desktop builds default to `STDIO_H_ENV` and expose
 both `vscp::IostreamTransport` and `vscp::StdioTransport`. The desktop adapters
-perform blocking line reads, which is appropriate for console applications;
-an event loop should run them on a dedicated input thread.
+poll currently available input and assemble frames incrementally, so a missing
+line terminator cannot block `vscp::Client` timeout handling. Their internal
+buffers never grow beyond `MAX_PROTOCOL_REQUEST_SIZE`; oversized input is
+discarded through its next line terminator.
 
 ```cpp
 vscp::IostreamTransport cppTransport(std::cin, std::cout);
 vscp::StdioTransport cTransport(stdin, stdout);
 ```
+
+`StdioTransport` configures its input `FILE*` as unbuffered so operating-system
+readiness checks and consumed bytes remain synchronized.
 
 Define `VSCP_ENABLE_IOSTREAM=0` or `VSCP_ENABLE_STDIO=0` to omit either desktop
 adapter. Defining both `ARDUINO_H_ENV` and `STDIO_H_ENV` is rejected.

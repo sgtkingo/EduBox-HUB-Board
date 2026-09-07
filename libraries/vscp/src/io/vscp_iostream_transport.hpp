@@ -1,6 +1,6 @@
 /**
  * @file vscp_iostream_transport.hpp
- * @brief Blocking VSCP line transport for standard C++ input and output streams.
+ * @brief Non-blocking VSCP line transport for standard C++ streams.
  */
 
 #pragma once
@@ -42,6 +42,8 @@ private:
   std::istream& input_;
   std::ostream& output_;
   size_t maxMessageSize_;
+  String buffer_;
+  bool overflowed_ = false;
 };
 
 }  // namespace vscp
