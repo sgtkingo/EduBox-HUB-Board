@@ -44,8 +44,8 @@ const char* commandName(Command command) {
 }
 
 Command commandFromName(String name) {
-  name.trim();
-  name.toUpperCase();
+  detail::trimString(name);
+  detail::uppercaseString(name);
   if (name == "INIT") return Command::Init;
   if (name == "CONNECT") return Command::Connect;
   if (name == "DISCONNECT") return Command::Disconnect;

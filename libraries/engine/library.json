@@ -1,0 +1,14 @@
+{
+  "name": "edubox-engine",
+  "version": "1.0.0",
+  "description": "EduBox device lifecycle and VSCP routing engine",
+  "keywords": ["edubox", "devices", "vscp"],
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32"],
+  "dependencies": {
+    "vscp": "*"
+  },
+  "build": {
+    "includeDir": "src"
+  }
+}

@@ -12,6 +12,16 @@ Univerzální firmware pro čtení dat ze senzorů a ovládání aktuátorů na 
 
 ---
 
+## Struktura projektu
+
+- `src/` obsahuje pouze firmware bootstrap, konfiguraci desky a setup vstupy.
+- `libraries/vscp/` obsahuje multiplatformní komunikační protokol.
+- `libraries/engine/` obsahuje společný `Device` model a VSCP router.
+- `libraries/devices/` obsahuje konkrétní senzory a aktuátory.
+- `lib/` zůstává pouze pro starší lokální ovladače třetích stran.
+
+---
+
 ## ✨ Funkce
 - Čtení mnoha analogových i digitálních senzorů (teplota, vlhkost, tlak, barva, vzdálenost, zvuk, IR, …).
 - Ovládání aktuátorů (servo, DC motor, krokový motor, bzučáky, RGB LED, laser, IR vysílač).
@@ -29,7 +39,8 @@ Univerzální firmware pro čtení dat ze senzorů a ovládání aktuátorů na 
 - **IR**: příjem (`IRrx`) a vysílání (`IRtx`)
 - **Vstupy**: joystick (VRx/VRy/SW), enkodér
 
-> Kompletní seznam viz adresář `src/` (soubory `Senzor_*.hpp/.cpp`) a `main.cpp` (globální registr senzorů).
+> Kompletní seznam je v `libraries/devices/src/`; globální registr zařízení
+> zůstává v `src/main.cpp`.
 
 ---
 

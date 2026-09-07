@@ -11,31 +11,31 @@ bool Codec::parseParameters(const String& message, Parameters& parameters, Strin
   parameters.clear();
   error = "";
 
-  if (message.length() == 0 || message.charAt(0) != '?') {
+  if (detail::stringLength(message) == 0 || detail::stringCharacter(message, 0) != '?') {
     error = "Message must start with ?";
     return false;
   }
-  if (message.length() > MAX_MESSAGE_SIZE) {
+  if (detail::stringLength(message) > MAX_MESSAGE_SIZE) {
     error = "Message too long";
     return false;
   }
 
-  int cursor = 1;
-  while (cursor < message.length()) {
-    int separator = message.indexOf('&', cursor);
-    if (separator < 0) separator = message.length();
+  size_t cursor = 1;
+  while (cursor < detail::stringLength(message)) {
+    size_t separator = detail::stringFind(message, '&', cursor);
+    if (separator == detail::STRING_NOT_FOUND) separator = detail::stringLength(message);
 
-    const int equals = message.indexOf('=', cursor);
-    if (equals <= cursor || equals >= separator) {
+    const size_t equals = detail::stringFind(message, '=', cursor);
+    if (equals == detail::STRING_NOT_FOUND || equals <= cursor || equals >= separator) {
       error = "Malformed parameter";
       return false;
     }
 
-    String key = message.substring(cursor, equals);
-    String value = message.substring(equals + 1, separator);
-    key.trim();
-    value.trim();
-    if (key.length() == 0) {
+    String key = detail::stringSubstring(message, cursor, equals);
+    String value = detail::stringSubstring(message, equals + 1, separator);
+    detail::trimString(key);
+    detail::trimString(value);
+    if (detail::stringLength(key) == 0) {
       error = "Empty parameter name";
       return false;
     }
@@ -89,15 +89,22 @@ String Codec::buildParameters(const Parameters& parameters) {
 }
 
 String Codec::buildRequest(Command command, const Parameters& parameters) {
-  Parameters requestParameters = parameters;
-  requestParameters["type"] = commandName(command);
-  return buildParameters(requestParameters);
+  String message = "?type=";
+  message += commandName(command);
+  for (const auto& parameter : parameters) {
+    if (parameter.first == "type") continue;
+    message += '&';
+    message += parameter.first;
+    message += '=';
+    message += parameter.second;
+  }
+  return message;
 }
 
 String Codec::buildResponse(const Response& response) {
   Parameters responseParameters = response.parameters;
   responseParameters["status"] = response.status == Status::Ok ? "1" : "0";
-  if (response.status == Status::Error && response.error.length() > 0) {
+  if (response.status == Status::Error && detail::stringLength(response.error) > 0) {
     responseParameters["error"] = response.error;
   }
   return buildParameters(responseParameters);

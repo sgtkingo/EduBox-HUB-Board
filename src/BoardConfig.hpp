@@ -1,14 +1,33 @@
 /**
  * @file BoardConfig.hpp
- * @brief Board-level default pins and shared sensor-driver instances.
+ * @brief Board-level device defaults and application transport configuration.
  *
  * Defaults are replaced by VSCP CONNECT assignments at runtime. They remain
  * useful for construction and bench testing before the first connection.
+ * Physical serial settings belong to the firmware application rather than the
+ * transport-independent VSCP library.
  */
 
 #pragma once
 
-#include "libs.hpp"
+#include <Arduino.h>
+
+struct UartTransportConfig {
+  uint8_t port;
+  uint32_t baudRate;
+  uint32_t frameFormat;
+  int8_t rxPin;
+  int8_t txPin;
+};
+
+constexpr uint32_t usbProtocolBaudRate = 115200;
+constexpr UartTransportConfig vscpUartConfig = {
+  2,
+  115200,
+  SERIAL_8N1,
+  18,
+  17
+};
 
 constexpr uint8_t joystickXPin = 15;
 constexpr uint8_t joystickYPin = 7;
@@ -23,6 +42,3 @@ constexpr uint8_t sensorSdaPin = 11;  // SDA_01
 constexpr uint8_t sensorSclPin = 12;  // SCL_01
 
 constexpr uint8_t microphoneSampleWindowMs = 50;
-
-Adafruit_BMP280 bmp(&I2C);
-Adafruit_BMP085 bmp180;

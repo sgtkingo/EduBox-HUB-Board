@@ -18,12 +18,12 @@ ResponseStatus Client::transact(Command command, Parameters parameters, bool req
   }
 
   transport_.writeLine(Codec::buildRequest(command, parameters));
-  const unsigned long startedAt = millis();
-  while (millis() - startedAt < timeoutMs_) {
+  const unsigned long startedAt = detail::monotonicMilliseconds();
+  while (detail::monotonicMilliseconds() - startedAt < timeoutMs_) {
     String message;
     const ReadStatus readStatus = transport_.readLine(message);
     if (readStatus == ReadStatus::NoData) {
-      delay(1);
+      detail::sleepMilliseconds(1);
       continue;
     }
     if (readStatus == ReadStatus::MessageTooLong) {
@@ -36,7 +36,7 @@ ResponseStatus Client::transact(Command command, Parameters parameters, bool req
       result.error = parseError;
       return result;
     }
-    if (expectedId.length() > 0) {
+    if (detail::stringLength(expectedId) > 0) {
       const auto responseId = result.parameters.find("id");
       if (responseId == result.parameters.end() || responseId->second != expectedId) {
         result.status = Status::Error;
@@ -53,8 +53,8 @@ ResponseStatus Client::transact(Command command, Parameters parameters, bool req
 ResponseStatus Client::init(const String& application, const String& databaseVersion) {
   Parameters parameters;
   parameters["api"] = API_VERSION;
-  if (application.length() > 0) parameters["app"] = application;
-  if (databaseVersion.length() > 0) parameters["db"] = databaseVersion;
+  if (detail::stringLength(application) > 0) parameters["app"] = application;
+  if (detail::stringLength(databaseVersion) > 0) parameters["db"] = databaseVersion;
   ResponseStatus response = transact(Command::Init, parameters, false);
   initialized_ = response.status == Status::Ok;
   return response;

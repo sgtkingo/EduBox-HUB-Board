@@ -14,12 +14,27 @@ Zkratka VSCP zde neoznačuje eventový Very Simple Control Protocol z vscp.org.
 
 ### Společná vrstva
 
+- `src/config.hpp` zachovává konfigurační model upstream VSCP. Výchozí hodnoty
+  `VSCP_API_VERSION`, `MAX_PROTOCOL_REQUEST_SIZE`, `PROTOCOL_INIT_TIMEOUT`,
+  `PROTOCOL_VERBOSE` a přepínače podporovaných desktopových adaptérů lze přepsat
+  build flagy. Konfigurace fyzického UARTu do knihovny nepatří.
 - `vscp_types.hpp` definuje API `1.4`, příkazy, stav a datové struktury.
 - `vscp_codec.hpp` parsuje a serializuje řádkové zprávy
   `?key=value&key2=value2`.
-- `vscp_transport.hpp` odděluje protokol od konkrétní komunikační linky.
-- `vscp_stream_transport.hpp` implementuje neblokující framing nad Arduino
+- `src/io/vscp_transport.hpp` odděluje protokol od konkrétní komunikační linky.
+- `src/io/vscp_stream_transport.hpp` implementuje neblokující framing nad Arduino
   `Stream`, limit 1024 B a vždy řádkově ukončený výstup.
+- `src/io/vscp_iostream_transport.hpp` zpřístupňuje blokující desktopový adaptér
+  nad `std::istream` a `std::ostream`.
+- `src/io/vscp_stdio_transport.hpp` zpřístupňuje blokující desktopový adaptér
+  nad standardními C streamy `FILE*` (`stdin`, `stdout` nebo soubory).
+- `vscp_platform.hpp` mapuje text na Arduino `String` nebo `std::string` a
+  abstrahuje časování klienta přes `millis()` nebo `std::chrono`.
+- `src/io/vscp_log_sink.hpp` odděluje diagnostický výstup od protokolového
+  kanálu. `PROTOCOL_VERBOSE=1` zapisuje chyby a hodnota `2` také celé RX/TX rámce.
+- Každé prostředí poskytuje odpovídající sink: `StreamLogSink`,
+  `IostreamLogSink` nebo `StdioLogSink`. Bez explicitně předaného sinku se
+  diagnostika nevypisuje.
 
 ### Klient
 
@@ -52,7 +67,10 @@ logické operace.
 
 ## Jednotný model zařízení
 
-`src/Device.hpp` nahrazuje rozdílné základní kontrakty senzoru a aktuátoru.
+`libraries/engine/src/Device.hpp` nahrazuje rozdílné základní kontrakty senzoru
+a aktuátoru. Knihovna `edubox-engine` dále vlastní registr zařízení a VSCP
+router; konkrétní hardware je oddělený v knihovně `edubox-devices` pod
+`libraries/devices/src/`.
 Každé zařízení má:
 
 - `DeviceType deviceType()` pro jednoznačný typ zařízení;
@@ -73,7 +91,7 @@ C++ metody.
 
 ## Firmware router
 
-`src/VscpDeviceRouter.cpp` propojuje generický server s hardwarem:
+`libraries/engine/src/VscpDeviceRouter.cpp` propojuje generický server s hardwarem:
 
 | Příkaz | Handler |
 | --- | --- |
@@ -91,13 +109,23 @@ aktuátorů. Vyhledává přímo UID ve společném registru.
 ## Bootstrap a transporty
 
 `src/main.cpp` obsahuje jediný registr `registeredDevices` pro `S00..S35` a
-`A00..A11`. Server je dostupný na:
+`A00..A11`. Fyzické parametry transportů jsou na úrovni aplikace v
+`src/BoardConfig.hpp`; VSCP knihovna zná pouze předaný objekt `Stream`. Server je
+dostupný na:
 
 - USB `Serial`, 115200 baudů;
 - UART2, 115200 8N1, RX 18 a TX 17.
 
 Oba transporty používají stejný codec a stejné handlery, ale samostatný stav
 inicializace.
+
+## Stav ověření
+
+- Klientská část VSCP a Arduino `Stream` transport byly ověřeny na reálném HW.
+- Serverová část je ověřena emulovaně desktopovým integračním testem
+  `libraries/vscp/tests/client_server_test.cpp`.
+- EduBox server a jeho handlery se úspěšně sestavují pro ESP32, ale serverový
+  režim zatím nebyl integračně ověřen na reálném HW.
 
 ## Příklad komunikace
 

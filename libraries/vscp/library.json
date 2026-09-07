@@ -3,8 +3,8 @@
   "version": "2.0.0",
   "description": "Virtual Sensors Communication Protocol client/server library",
   "keywords": ["communication", "serial", "sensors", "actuators"],
-  "frameworks": ["arduino"],
-  "platforms": ["espressif32"],
+  "frameworks": "*",
+  "platforms": "*",
   "build": {
     "includeDir": "src"
   }

@@ -1,0 +1,25 @@
+{
+  "name": "edubox-devices",
+  "version": "1.0.0",
+  "description": "EduBox sensor and actuator implementations",
+  "keywords": ["edubox", "sensors", "actuators"],
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32"],
+  "dependencies": {
+    "edubox-engine": "*",
+    "OneWire": "*",
+    "DallasTemperature": "*",
+    "DHT sensor library": "*",
+    "NewPing": "*",
+    "Adafruit BMP085 Library": "*",
+    "Adafruit BMP280 Library": "*",
+    "Adafruit TCS34725": "*",
+    "ESP32Servo": "*",
+    "CheapStepper": "*",
+    "IRremoteESP8266": "*",
+    "GP2Y0A21YK0F": "*"
+  },
+  "build": {
+    "includeDir": "src"
+  }
+}

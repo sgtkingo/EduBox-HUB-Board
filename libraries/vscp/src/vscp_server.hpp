@@ -5,8 +5,8 @@
 
 #pragma once
 
+#include "io/vscp_transport.hpp"
 #include "vscp_codec.hpp"
-#include "vscp_transport.hpp"
 
 #include <functional>
 #include <map>

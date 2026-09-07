@@ -5,14 +5,16 @@
 
 #pragma once
 
-#include <Arduino.h>
+#include "vscp_platform.hpp"
+
+#include <cstdint>
 #include <map>
 
 namespace vscp {
 
-constexpr const char* API_VERSION = "1.4";
-constexpr size_t MAX_MESSAGE_SIZE = 1024;
-constexpr unsigned long DEFAULT_TIMEOUT_MS = 500;
+constexpr const char* API_VERSION = VSCP_API_VERSION;
+constexpr size_t MAX_MESSAGE_SIZE = MAX_PROTOCOL_REQUEST_SIZE;
+constexpr unsigned long DEFAULT_TIMEOUT_MS = PROTOCOL_INIT_TIMEOUT;
 
 using Parameters = std::map<String, String>;
 

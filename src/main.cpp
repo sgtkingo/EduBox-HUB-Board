@@ -7,19 +7,15 @@
  * its Sxx/Axx UID remains stable for existing HMI device databases.
  */
 
-#include "libs.hpp"
 #include "BoardConfig.hpp"
-#include "VscpDeviceRouter.hpp"
 
 #include <HardwareSerial.h>
+#include <devices.hpp>
+#include <engine.hpp>
 #include <esp_log.h>
 #include <vscp.hpp>
 
 namespace {
-
-constexpr uint32_t VSCP_BAUD_RATE = 115200;
-constexpr int VSCP_RX_PIN = 18;
-constexpr int VSCP_TX_PIN = 17;
 
 RegisteredDevice registeredDevices[] = {
   {"S00", new DS18B20()},
@@ -75,7 +71,7 @@ RegisteredDevice registeredDevices[] = {
 
 constexpr size_t registeredDeviceCount = sizeof(registeredDevices) / sizeof(registeredDevices[0]);
 
-HardwareSerial protocolSerial(2);
+HardwareSerial protocolSerial(vscpUartConfig.port);
 vscp::StreamTransport usbTransport(Serial);
 vscp::StreamTransport uartTransport(protocolSerial);
 vscp::Server protocolServer;
@@ -84,11 +80,15 @@ VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount);
 }  // namespace
 
 void setup() {
-  Serial.begin(VSCP_BAUD_RATE);
+  Serial.begin(usbProtocolBaudRate);
   esp_log_level_set("*", ESP_LOG_ERROR);
   esp_log_level_set("Wire", ESP_LOG_NONE);
 
-  protocolSerial.begin(VSCP_BAUD_RATE, SERIAL_8N1, VSCP_RX_PIN, VSCP_TX_PIN);
+  protocolSerial.begin(
+      vscpUartConfig.baudRate,
+      vscpUartConfig.frameFormat,
+      vscpUartConfig.rxPin,
+      vscpUartConfig.txPin);
 
   deviceRouter.registerHandlers(protocolServer);
   protocolServer.addTransport(usbTransport);
