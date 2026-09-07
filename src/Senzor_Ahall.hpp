@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_Ahall.hpp
+ * @brief Analog Hall-effect sensor declaration with configurable thresholds.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -14,7 +19,7 @@ public:
   std::vector<KV> update() override;
   void reset() override { _val = 0; }
   bool init() override { return true; }
-  const char* getType() override { return "Ahall"; }
+  DeviceType deviceType() const override { return DeviceType::AnalogHall; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

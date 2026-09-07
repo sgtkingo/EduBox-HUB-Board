@@ -1,3 +1,8 @@
+/**
+ * @file IRtx.hpp
+ * @brief Infrared transmitter device declaration and code parser.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -9,6 +14,8 @@ void IRtx_reset(int pin);
 
 class IRtx : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::InfraredTransmitter; }
+
   IRtx(int pin, uint32_t code = 0x0)
     : _pin(pin), _code(code) {}
 

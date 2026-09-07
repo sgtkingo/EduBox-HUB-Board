@@ -1,3 +1,8 @@
+/**
+ * @file SG90.hpp
+ * @brief SG90 servo device declaration with smooth angle control.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <ESP32Servo.h>
@@ -9,6 +14,8 @@ void SG90_control(int angle, int speed);
 
 class SG90 : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::ServoSg90; }
+
   SG90(int pin, int angle, int speed)
     : _pin(pin), _angle(angle), _speed(speed) {}
 
@@ -26,13 +33,14 @@ public:
   }
 
   // HW init až PO attach()
-  void init() override {
-    if (_pin < 0) return;
+  bool init() override {
+    if (_pin < 0) return false;
     if (_servo.attached()) _servo.detach();
     _servo.attach(_pin);
     writeSmooth_(0, 0);
     _lastAngle = 0;
     SG90_setPin(_pin); 
+    return true;
   }
 
   // Reset = reinicializace

@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_MicBig.hpp
+ * @brief Large microphone module declaration and sample-window configuration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -16,7 +21,7 @@ public:
   bool init()   override;
   void reset()  override {}
   std::vector<KV> update() override;
-  const char*     getType() override { return "MicBig"; }
+  DeviceType deviceType() const override { return DeviceType::LargeMicrophone; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

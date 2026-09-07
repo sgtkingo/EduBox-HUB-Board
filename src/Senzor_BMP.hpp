@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_BMP.hpp
+ * @brief BMP280 pressure and temperature device declaration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -30,7 +35,7 @@ public:
   bool init() override;
   std::vector<KV> update() override;
   void reset() override;
-  const char* getType() override { return "BMP280"; }
+  DeviceType deviceType() const override { return DeviceType::Bmp280; }
 
   // konfigurační parametry: oversampling teploty/tlaku a filtr
   void config(Param* params = nullptr, int count = 0) override;

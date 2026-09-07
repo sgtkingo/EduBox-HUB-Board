@@ -1,3 +1,8 @@
+/**
+ * @file DC.hpp
+ * @brief DC motor device declaration with speed and enabled-state control.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -8,6 +13,8 @@ void DC_reset();
 
 class DC : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::DcMotor; }
+
   DC(int pin, int Speed, bool state)
     : _pin(pin), _Speed(Speed), _state(state) {}
 

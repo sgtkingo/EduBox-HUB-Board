@@ -1,3 +1,8 @@
+/**
+ * @file TwoColorMini.hpp
+ * @brief Compact two-color LED device declaration.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <vector>
@@ -9,6 +14,8 @@ void TwoColorMini_reset();
 
 class TwoColorMini : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::MiniTwoColorLed; }
+
   TwoColorMini(int pinRed = -1, int pinGreen = -1, char color = 'r', int Brightness = 0)
     : _pinRed(pinRed), _pinGreen(pinGreen), _color(color), _Brightness(Brightness) {}
 

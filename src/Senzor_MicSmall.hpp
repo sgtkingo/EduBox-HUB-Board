@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_MicSmall.hpp
+ * @brief Small microphone module declaration and sample-window configuration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -17,7 +22,7 @@ public:
   bool init()   override;                
   void reset()  override {}
   std::vector<KV> update() override;       
-  const char*     getType() override { return "MicSmall"; }
+  DeviceType deviceType() const override { return DeviceType::SmallMicrophone; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

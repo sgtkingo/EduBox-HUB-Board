@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_TCS34725.hpp
+ * @brief TCS34725 RGB color-sensor device declaration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -33,7 +38,7 @@ public:
   bool init() override;
   void            reset()  override;         // re-begin na stejné adrese
   std::vector<KV> update() override;         // vrací R,G,B (0–255)
-  const char*     getType() override { return "TCS34725"; }
+  DeviceType deviceType() const override { return DeviceType::ColorTcs34725; }
 
   // konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

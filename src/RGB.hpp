@@ -1,3 +1,8 @@
+/**
+ * @file RGB.hpp
+ * @brief RGB LED device declaration with independent channel brightness control.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -8,6 +13,8 @@ void RGB_reset();
 
 class RGB : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::RgbLed; }
+
   RGB(int pinR = -1, int pinG = -1, int pinB = -1, int BrigR = 0, int BrigG = 0, int BrigB = 0)
     : _pinR(pinR), _pinG(pinG), _pinB(pinB),
       _BrigR(BrigR), _BrigG(BrigG), _BrigB(BrigB) {}

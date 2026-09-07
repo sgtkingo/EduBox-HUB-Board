@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_IRrx.hpp
+ * @brief Asynchronous infrared receiver device declaration.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <vector>
@@ -14,7 +19,7 @@ public:
   bool            init()   override;
   void            reset()  override;
   std::vector<KV> update() override;
-  const char*     getType() override { return "IRrx"; }
+  DeviceType deviceType() const override { return DeviceType::InfraredReceiver; }
 
   void config(Param* params = nullptr, int count = 0) override {
     for (int i = 0; i < count; ++i) {

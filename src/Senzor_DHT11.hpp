@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_DHT11.hpp
+ * @brief DHT11 temperature and humidity device declaration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -16,7 +21,7 @@ public:
   std::vector<KV> update() override;
   void reset() override;
   bool init() override;
-  const char* getType() override { return "DHT11"; }
+  DeviceType deviceType() const override { return DeviceType::Dht11; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

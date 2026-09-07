@@ -53,9 +53,10 @@ void Stepper::detach() {
   releasePins_();
 }
 
-void Stepper::init() {
+bool Stepper::init() {
   // opakovaná ochrana – když attach nedodal všechny piny, nic se nestane
   if (!_stp) ensureDriver_();
+  return _stp != nullptr;
 }
 
 void Stepper::control(Param* params, int count) {

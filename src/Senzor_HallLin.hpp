@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_HallLin.hpp
+ * @brief Linear Hall-effect sensor declaration with selectable output units.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <vector>
@@ -15,7 +20,7 @@ public:
   std::vector<KV> update() override;
   void            reset() override {}
   bool            init()  override;                 
-  const char*     getType() override { return "HallLin"; }
+  DeviceType deviceType() const override { return DeviceType::LinearHall; }
 
   // konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

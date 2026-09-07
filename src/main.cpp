@@ -1,93 +1,100 @@
+/**
+ * @file main.cpp
+ * @brief EduBox HUB firmware bootstrap and unified device registry.
+ *
+ * The application exposes the same handler-based VSCP server over USB Serial
+ * and UART2. Every physical sensor and actuator is registered as Device, while
+ * its Sxx/Axx UID remains stable for existing HMI device databases.
+ */
+
 #include "libs.hpp"
-#include "GVL.hpp"
+#include "BoardConfig.hpp"
+#include "VscpDeviceRouter.hpp"
+
 #include <HardwareSerial.h>
-#include "vscp_port.hpp"  
-#include "vscp_device.hpp"
-extern "C" void VSCP_SetupRegisterAll();
-extern "C" void VSCP_Poll();
+#include <esp_log.h>
+#include <vscp.hpp>
 
+namespace {
 
-// --- Globální seznamy ---
-Sensor* SeznamSenzoru[] = {
-  new DS18B20(&sensors),                      // 0
-  new DHT11x(term2),                          // 1
-  new SensorDigitalRead(term2,2,"Dhall"),     // 2
-  new Ahall(term2),                           // 3  -- s rezistorem
-  new SensorDigitalRead(term1,4,"PInterrupt"),// 4
-  new SensorDigitalRead(term1,5,"FC51"),      // 5
-  new HCSR04(term1, term2),                   // 6
-  new SensorDigitalRead(term1,7,"HCSR501"),   // 7
-  new SensorDigitalRead(term1,8,"KW113Z"),    // 8
-  new BMP280(xSDA, xSCL),                     // 9
-  new BMP180(xSDA, xSCL),                     // 10
-  new TCS34725(xSDA, xSCL),                   // 11
-  new IRrx(term1),                            // 12
-  new SensorDigitalRead(term1,13,"Dntc"),     // 13
-  new Antc(term2),                            // 14
-  new PHresistance(term2),                    // 15
-  new Joystick(VRx,VRy,sw),                   // 16
-  new HallLin(term2),                         // 17 -- bez rezistoru
-  new SensorDigitalRead(term1,18,"MQ135"),    // 18
-  new SensorDigitalRead(term1,19,"DMoisture"),// 19
-  new SensorDigitalRead(term1,20,"TTP223"),   // 20
-  new GP2Y0A21YK0F(term1),                    // 21
-  new Rencoder(term3, term4),                 // 22
-  new SensorDigitalRead(term1,23,"HS0038DB"), // 23
-  new SensorDigitalRead(term1,24,"TCRT5000"), // 24
-  new SensorDigitalRead(term1,25,"IRflame"),  // 25
-  new SensorDigitalRead(term2,26,"REED"),     // 26
-  new MicSmall(term1, MT),                    // 27
-  new MicBig(term1, MT),                      // 28
-  new SensorDigitalRead(term1,29,"MetalTouch"),// 29
-  new Heartbeat(term2,5000),                  // 30
-  new SensorDigitalRead(term2,31,"Btn"),      // 31
-  new SensorDigitalRead(term2,32,"TiltSwitch"),// 32
-  new SensorDigitalRead(term2,33,"Dvibration"),// 33
-  new SensorDigitalRead(term2,34,"HGswitch"),  // 34
-  new SensorDigitalRead(term2,35,"Tap"),       // 35
+constexpr uint32_t VSCP_BAUD_RATE = 115200;
+constexpr int VSCP_RX_PIN = 18;
+constexpr int VSCP_TX_PIN = 17;
+
+RegisteredDevice registeredDevices[] = {
+  {"S00", new DS18B20()},
+  {"S01", new DHT11x(terminal2Pin)},
+  {"S02", new SensorDigitalRead(terminal2Pin, 2, "Dhall")},
+  {"S03", new Ahall(terminal2Pin)},
+  {"S04", new SensorDigitalRead(terminal1Pin, 4, "PInterrupt")},
+  {"S05", new SensorDigitalRead(terminal1Pin, 5, "FC51")},
+  {"S06", new HCSR04(terminal1Pin, terminal2Pin)},
+  {"S07", new SensorDigitalRead(terminal1Pin, 7, "HCSR501")},
+  {"S08", new SensorDigitalRead(terminal1Pin, 8, "KW113Z")},
+  {"S09", new BMP280(sensorSdaPin, sensorSclPin)},
+  {"S10", new BMP180(sensorSdaPin, sensorSclPin)},
+  {"S11", new TCS34725(sensorSdaPin, sensorSclPin)},
+  {"S12", new IRrx(terminal1Pin)},
+  {"S13", new SensorDigitalRead(terminal1Pin, 13, "Dntc")},
+  {"S14", new Antc(terminal2Pin)},
+  {"S15", new PHresistance(terminal2Pin)},
+  {"S16", new Joystick(joystickXPin, joystickYPin, joystickSwitchPin)},
+  {"S17", new HallLin(terminal2Pin)},
+  {"S18", new SensorDigitalRead(terminal1Pin, 18, "MQ135")},
+  {"S19", new SensorDigitalRead(terminal1Pin, 19, "DMoisture")},
+  {"S20", new SensorDigitalRead(terminal1Pin, 20, "TTP223")},
+  {"S21", new GP2Y0A21YK0F(terminal1Pin)},
+  {"S22", new Rencoder(terminal3Pin, terminal4Pin)},
+  {"S23", new SensorDigitalRead(terminal1Pin, 23, "HS0038DB")},
+  {"S24", new SensorDigitalRead(terminal1Pin, 24, "TCRT5000")},
+  {"S25", new SensorDigitalRead(terminal1Pin, 25, "IRflame")},
+  {"S26", new SensorDigitalRead(terminal2Pin, 26, "REED")},
+  {"S27", new MicSmall(terminal1Pin, microphoneSampleWindowMs)},
+  {"S28", new MicBig(terminal1Pin, microphoneSampleWindowMs)},
+  {"S29", new SensorDigitalRead(terminal1Pin, 29, "MetalTouch")},
+  {"S30", new Heartbeat(terminal2Pin, 5000)},
+  {"S31", new SensorDigitalRead(terminal2Pin, 31, "Btn")},
+  {"S32", new SensorDigitalRead(terminal2Pin, 32, "TiltSwitch")},
+  {"S33", new SensorDigitalRead(terminal2Pin, 33, "Dvibration")},
+  {"S34", new SensorDigitalRead(terminal2Pin, 34, "HGswitch")},
+  {"S35", new SensorDigitalRead(terminal2Pin, 35, "Tap")},
+
+  {"A00", new SG90(terminal1Pin, 42, 100)},
+  {"A01", new Stepper(terminal1Pin, terminal2Pin, terminal3Pin, terminal4Pin, 42, true, 16)},
+  {"A02", new DC(terminal1Pin, 50, true)},
+  {"A03", new TwoColor(terminal3Pin, terminal4Pin, 'R', 50)},
+  {"A04", new TwoColorMini(terminal4Pin, terminal3Pin, 'G', 100)},
+  {"A05", new RGB(terminal1Pin, terminal2Pin, terminal3Pin, 0, 0, 50)},
+  {"A06", new RGB(terminal1Pin, terminal2Pin, terminal3Pin, 0, 0, 50)},
+  {"A07", new Color7(terminal1Pin, true)},
+  {"A08", new IRtx(terminal2Pin, 0)},
+  {"A09", new Laser(terminal2Pin, true)},
+  {"A10", new BuzzP(terminal1Pin, 1000, 500)},
+  {"A11", new BuzzA(terminal1Pin, true)}
 };
-int PocetSenzoru = sizeof(SeznamSenzoru) / sizeof(SeznamSenzoru[0]);
 
-Actuator* SeznamAktuatoru[] = {
-  new SG90(term1,42,100),                           //0
-  new Stepper(term1,term2,term3,term4,42,true,16),  //1
-  new DC(term1,50,true),                            //2
-  new TwoColor(term3,term4,'R',50),                 //3
-  new TwoColorMini(term4,term3,'G',100),            //4
-  new RGB(term1,term2,term3,0,0,50),                //5
-  new RGB(term1,term2,term3,0,0,50),                //6
-  new Color7(term1,true),                           //7
-  new IRtx(term2,0),                                //8
-  new Laser(term2,true),                            //9
-  new BuzzP(term1,1000,500),                        //10
-  new BuzzA(term1,true),                            //11
-};
+constexpr size_t registeredDeviceCount = sizeof(registeredDevices) / sizeof(registeredDevices[0]);
 
-int PocetAktuatoru = sizeof(SeznamAktuatoru) / sizeof(SeznamAktuatoru[0]);
+HardwareSerial protocolSerial(2);
+vscp::StreamTransport usbTransport(Serial);
+vscp::StreamTransport uartTransport(protocolSerial);
+vscp::Server protocolServer;
+VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount);
 
+}  // namespace
 
-// Setup funkce - start seriové linky 
-void setup()
-{
-  // 1) USB Serial pro debug
-  Serial.begin(115200);
-  
-  // Potlačení všech I2C error logů (volat hned po Serial.begin)
-  esp_log_level_set("*", ESP_LOG_ERROR);  // globálně jen ERROR a výš
-  esp_log_level_set("Wire", ESP_LOG_NONE);  // Wire úplně vypnout
-  delay(100);
+void setup() {
+  Serial.begin(VSCP_BAUD_RATE);
+  esp_log_level_set("*", ESP_LOG_ERROR);
+  esp_log_level_set("Wire", ESP_LOG_NONE);
 
-  // 2) HW UART2 pro VSCP protokol
-  VirtualUART2.begin(VSCP_BAUD, SERIAL_8N1, VSCP_RX_PIN, VSCP_TX_PIN);
-  delay(200);
+  protocolSerial.begin(VSCP_BAUD_RATE, SERIAL_8N1, VSCP_RX_PIN, VSCP_TX_PIN);
 
-  VSCP_SetupRegisterAll();
-  Serial.setTimeout(100);
-  VirtualUART2.setTimeout(100);
+  deviceRouter.registerHandlers(protocolServer);
+  protocolServer.addTransport(usbTransport);
+  protocolServer.addTransport(uartTransport);
 }
 
-
-// Loop smyčka
 void loop() {
-  VSCP_Poll();
+  protocolServer.poll();
 }

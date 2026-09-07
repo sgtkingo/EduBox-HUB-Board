@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_PHresistance.hpp
+ * @brief Photoresistor device declaration with ADC and gain configuration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -15,7 +20,7 @@ public:
   bool            init()   override;                
   void            reset()  override {}
   std::vector<KV> update() override;                
-  const char*     getType() override { return "PHresistance"; }
+  DeviceType deviceType() const override { return DeviceType::Photoresistor; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {

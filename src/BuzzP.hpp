@@ -1,3 +1,8 @@
+/**
+ * @file BuzzP.hpp
+ * @brief Passive-buzzer device declaration with frequency and duration control.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -8,6 +13,8 @@ void BuzzP_reset(int pin);
 
 class BuzzP : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::PassiveBuzzer; }
+
   BuzzP(int pin, int freq, int duration)
     : _pin(pin), _freq(freq), _duration(duration) {}
 
@@ -37,7 +44,7 @@ public:
   }
 
   void reset() override { BuzzP_reset(_pin); }
-  void init() override;
+  bool init() override;
 
 private:
   int _pin;

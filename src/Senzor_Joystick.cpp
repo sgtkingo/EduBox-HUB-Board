@@ -1,74 +1,77 @@
+/**
+ * @file Senzor_Joystick.cpp
+ * @brief Implements joystick calibration and direction detection.
+ */
+
 #include "Senzor_Joystick.hpp"
 
-void Joystick::calibrateCenter_(int res) {
-  analogReadResolution(res);
-  _maxADC = (1UL << res) - 1;
+void Joystick::calibrateCenter(int resolutionBits) {
+  analogReadResolution(resolutionBits);
+  maximumAdcValue_ = (1UL << resolutionBits) - 1;
 
 #ifdef ESP32
-  // doporučená atenuace pro plný rozsah 0–3.3 V
-  analogSetPinAttenuation(_x, ADC_11db);
-  analogSetPinAttenuation(_y, ADC_11db);
+  // ADC_11db covers the joystick's full 0-3.3 V output range.
+  analogSetPinAttenuation(xPin_, ADC_11db);
+  analogSetPinAttenuation(yPin_, ADC_11db);
 #endif
 
-  long sx = 0, sy = 0;
-  const int N = 16;
-  for (int i = 0; i < N; ++i) {
-    sx += analogRead(_x);
-    sy += analogRead(_y);
+  long xSampleSum = 0;
+  long ySampleSum = 0;
+  constexpr int SAMPLE_COUNT = 16;
+  for (int sample = 0; sample < SAMPLE_COUNT; ++sample) {
+    xSampleSum += analogRead(xPin_);
+    ySampleSum += analogRead(yPin_);
     delay(2);
   }
-  _cx = (int)(sx / N);
-  _cy = (int)(sy / N);
+  centerX_ = static_cast<int>(xSampleSum / SAMPLE_COUNT);
+  centerY_ = static_cast<int>(ySampleSum / SAMPLE_COUNT);
 
-  _prevRes   = res;
-  _calibrated = true;
+  previousResolutionBits_ = resolutionBits;
+  calibrated_ = true;
 }
 
-int Joystick::pctToAdcTol_(int pct) const {
-  int p = pct;
-  if (p < 0)   p = 0;
-  if (p > 100) p = 100;
-  return (int)((p * (long)_maxADC) / 100L);
+int Joystick::deadZoneTolerance(int percent) const {
+  int boundedPercent = percent;
+  if (boundedPercent < 0) boundedPercent = 0;
+  if (boundedPercent > 100) boundedPercent = 100;
+  return static_cast<int>((boundedPercent * static_cast<long>(maximumAdcValue_)) / 100L);
 }
-
-
 
 std::vector<KV> Joystick::update() {
-  if (!_pinsInited) {
-    pinMode(_sw, INPUT_PULLUP);
-    _pinsInited = true;
+  if (!pinsInitialized_) {
+    if (switchPin_ >= 0) pinMode(switchPin_, INPUT_PULLUP);
+    pinsInitialized_ = true;
   }
 
-  // kalibrace při prvním použití nebo při změně rozlišení
-  if (!_calibrated || _res != _prevRes) {
-    calibrateCenter_(_res);   // nech páčku uprostřed
+  // Recalibrate after reset or an ADC resolution change. The stick must rest at center.
+  if (!calibrated_ || resolutionBits_ != previousResolutionBits_) {
+    calibrateCenter(resolutionBits_);
   } else {
-    analogReadResolution(_res);
+    analogReadResolution(resolutionBits_);
   }
 
-  const int xValue = analogRead(_x);
-  const int yValue = analogRead(_y);
-  const bool click = (digitalRead(_sw) == LOW);
+  const int xValue = analogRead(xPin_);
+  const int yValue = analogRead(yPin_);
+  const bool clicked = switchPin_ >= 0 && digitalRead(switchPin_) == LOW;
 
-  const int tol = pctToAdcTol_(_threshold);
-  int dx = xValue - _cx;
-  int dy = yValue - _cy;
+  const int tolerance = deadZoneTolerance(deadZonePercent_);
+  int xOffset = xValue - centerX_;
+  int yOffset = yValue - centerY_;
 
-  // mrtvá zóna
-  if (abs(dx) < tol) dx = 0;
-  if (abs(dy) < tol) dy = 0;
+  if (abs(xOffset) < tolerance) xOffset = 0;
+  if (abs(yOffset) < tolerance) yOffset = 0;
 
-  // určení směru – přesně podle původního kódu (zachováno i s mapováním os)
+  // Preserve the board's historical axis mapping when reporting direction.
   String direction;
-  if (click) {
+  if (clicked) {
     direction = "CLICK";
-  } else if (dx == 0 && dy == 0) {
+  } else if (xOffset == 0 && yOffset == 0) {
     direction = "CENTER";
-  } else if (abs(dy) >= abs(dx)) {
-    direction = (dy < 0) ? "LEFT" : "RIGHT";
+  } else if (abs(yOffset) >= abs(xOffset)) {
+    direction = (yOffset < 0) ? "LEFT" : "RIGHT";
   } else {
-    direction = (dx > 0) ? "UP" : "DOWN";
+    direction = (xOffset > 0) ? "UP" : "DOWN";
   }
 
-  return { {"direction", direction} };
+  return {{"direction", direction}};
 }

@@ -1,3 +1,8 @@
+/**
+ * @file Stepper.hpp
+ * @brief Four-wire stepper motor device declaration and driver lifecycle.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -14,7 +19,8 @@ public:
 
   void attach(const std::vector<int>& pins) override;
   void detach() override;
-  void init() override;
+  DeviceType deviceType() const override { return DeviceType::StepperMotor; }
+  bool init() override;
   void control(Param* params = nullptr, int count = 0) override;
   void reset() override;
 

@@ -1,3 +1,8 @@
+/**
+ * @file 7color.hpp
+ * @brief Seven-color LED device declaration and hardware control hooks.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -8,6 +13,8 @@ void Color7_reset(int pin);
 
 class Color7 : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::SevenColorLed; }
+
   // konstruktor, pin lze předat nebo přiřadit přes attach
   Color7(int pin = -1, bool control = false)
     : _pin(pin), _control(control) {

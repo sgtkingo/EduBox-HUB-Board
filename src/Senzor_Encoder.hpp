@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_Encoder.hpp
+ * @brief Rotary encoder device declaration with direction and alarm limits.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <vector>
@@ -19,7 +24,7 @@ public:
   bool init() override;
   void reset() override;
   std::vector<KV> update() override;
-  const char* getType() override { return "Encoder"; }
+  DeviceType deviceType() const override { return DeviceType::RotaryEncoder; }
 
   void attach(const std::vector<int>& pins) override {
     if (pins.size() >= 1) _pinB = pins[0];

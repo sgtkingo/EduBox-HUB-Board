@@ -1,3 +1,8 @@
+/**
+ * @file Laser.hpp
+ * @brief Laser output device declaration with safe attach and detach lifecycle.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -8,6 +13,8 @@ void Laser_reset();
 
 class Laser : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::Laser; }
+
   Laser(int pin = -1, bool control = false)
     : _pin(pin), _control(control) {}
 

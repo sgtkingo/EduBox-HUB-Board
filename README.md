@@ -15,7 +15,7 @@ Univerzální firmware pro čtení dat ze senzorů a ovládání aktuátorů na 
 ## ✨ Funkce
 - Čtení mnoha analogových i digitálních senzorů (teplota, vlhkost, tlak, barva, vzdálenost, zvuk, IR, …).
 - Ovládání aktuátorů (servo, DC motor, krokový motor, bzučáky, RGB LED, laser, IR vysílač).
-- Komunikace přes **VSCP** (USB Serial) – jednoduché dotazy/odpovědi a periodické reporty.
+- Komunikace přes **VSCP API 1.4** (USB Serial a UART2) – společný klientský codec a handler-based server.
 - Konfigurovatelné piny a I²C (SDA/SCL) pro snadné zapojení.
 - Připraveno pro **PlatformIO** (rychlý build, upload, monitor).
 
@@ -49,6 +49,9 @@ Nastavení pinů probíhá v připojeném GUI (ESP displej/ Windows aplikace)
 - **Příkaz pro odpojení**: `Disconnect`
 
 > **Detailní informace v dokumentaci**
+
+Architektura protokolu, společný model `Device` a příklady komunikace jsou v
+[`Dokumentace/VSCP_INTEGRATION_ANALYSIS.md`](Dokumentace/VSCP_INTEGRATION_ANALYSIS.md).
 
 ---
 

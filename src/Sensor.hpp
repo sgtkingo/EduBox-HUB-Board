@@ -1,27 +1,13 @@
-#ifndef SENSOR_HPP
-#define SENSOR_HPP
-#include <vector>
-#include <Arduino.h>
+/**
+ * @file Sensor.hpp
+ * @brief Backward-compatible sensor alias for the unified Device API.
+ *
+ * New code should include Device.hpp and use Device directly. The alias keeps
+ * existing concrete device declarations source-compatible during migration.
+ */
 
-// Struktura pro parametry klíč-hodnota
-struct Param {
-  String key;
-  String value;
-};
-struct KV { String k; String v; };
+#pragma once
 
+#include "Device.hpp"
 
-//Třída Sensor
-class Sensor {
-  public:
-    virtual std::vector<KV>  update() = 0;
-    virtual void reset() {}
-    virtual bool init()=0; 
-    virtual void config(Param* params, int paramCount) {}
-    virtual ~Sensor() {}
-    virtual const char* getType() = 0;
-    virtual void attach(const std::vector<int>& pins) { (void)pins; }
-    virtual void detach() {} 
-};
-
-#endif
+using Sensor = Device;

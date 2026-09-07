@@ -1,3 +1,8 @@
+/**
+ * @file BuzzA.hpp
+ * @brief Active-buzzer device declaration and binary control interface.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"
@@ -8,6 +13,8 @@ void BuzzA_reset(int pin);
 
 class BuzzA : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::ActiveBuzzer; }
+
   BuzzA(int pin, bool control)
     : _pin(pin), _control(control) {}
 

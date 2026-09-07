@@ -1,3 +1,8 @@
+/**
+ * @file libs.hpp
+ * @brief Central include list for EduBox sensor and actuator implementations.
+ */
+
 #include <Arduino.h>
 #include <Adafruit_BMP085.h>
 #include <Adafruit_BMP280.h>

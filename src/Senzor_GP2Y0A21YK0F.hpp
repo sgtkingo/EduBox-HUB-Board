@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_GP2Y0A21YK0F.hpp
+ * @brief Sharp GP2Y0A21YK0F distance device declaration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -14,7 +19,7 @@ public:
   bool init() override;
   void reset() override {}                              
   std::vector<KV> update() override;                    
-  const char* getType() override { return "GP2Y0A21YK0F"; }
+  DeviceType deviceType() const override { return DeviceType::SharpDistance; }
 
   // Config v HPP: jen uloží parametry (0=cm, 1=mm; limity ve stejné jednotce)
   void config(Param* params = nullptr, int count = 0) override {

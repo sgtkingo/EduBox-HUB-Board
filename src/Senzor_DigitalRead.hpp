@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_DigitalRead.hpp
+ * @brief Generic digital-input device used by multiple EduBox modules.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <vector>
@@ -14,7 +19,7 @@ public:
   bool init() override { return true; }
   void reset() override {}
   std::vector<KV> update() override;
-  const char* getType() override { return "Digital"; }
+  DeviceType deviceType() const override { return DeviceType::DigitalInput; }
 
   // PIN se bere pouze z attach()
   void attach(const std::vector<int>& pins) override {

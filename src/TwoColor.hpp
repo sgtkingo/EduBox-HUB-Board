@@ -1,3 +1,8 @@
+/**
+ * @file TwoColor.hpp
+ * @brief Two-color LED device declaration with color and brightness control.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include "actuator.hpp"  
@@ -7,6 +12,8 @@ void TwoColor_reset();
 
 class TwoColor : public Actuator {
 public:
+  DeviceType deviceType() const override { return DeviceType::TwoColorLed; }
+
   TwoColor(int pinRed, int pinGreen, char color, int Brightness)
     : _pinRed(pinRed), _pinGreen(pinGreen), _color(color), _Brightness(Brightness) {}
 

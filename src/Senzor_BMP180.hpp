@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_BMP180.hpp
+ * @brief BMP180 pressure and altitude device declaration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -29,7 +34,7 @@ public:
   bool init() override;
   std::vector<KV> update() override;
   void reset() override;
-  const char* getType() override { return "BMP180"; }
+  DeviceType deviceType() const override { return DeviceType::Bmp180; }
 
   // Konfigurační parametry (např. Gain)
   void config(Param* params = nullptr, int count = 0) override {

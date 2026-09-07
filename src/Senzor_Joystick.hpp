@@ -1,63 +1,71 @@
+/**
+ * @file Senzor_Joystick.hpp
+ * @brief Three-channel joystick device declaration and calibration state.
+ */
+
 #pragma once
 
 #include <Arduino.h>
 #include <vector>
-#include "Sensor.hpp"
 
+#include "Sensor.hpp"
 
 class Joystick : public Sensor {
 public:
-  Joystick(int x, int y, int sw)
-    : _x(x), _y(y), _sw(sw),
-      _res(12), _threshold(25),
-      _calibrated(false), _cx(0), _cy(0),
-      _prevRes(-1), _maxADC(4095), _pinsInited(false) {
-    analogReadResolution(_res);
+  Joystick(int xPin, int yPin, int switchPin)
+      : xPin_(xPin), yPin_(yPin), switchPin_(switchPin),
+        resolutionBits_(12), deadZonePercent_(25), calibrated_(false),
+        centerX_(0), centerY_(0), previousResolutionBits_(-1),
+        maximumAdcValue_(4095), pinsInitialized_(false) {
+    analogReadResolution(resolutionBits_);
   }
 
-    void attach(const std::vector<int>& pins) override {
-      if (pins.size() >= 1) _x  = pins[0];
-      if (pins.size() >= 2) _y  = pins[1];
+  void attach(const std::vector<int>& pins) override {
+    if (pins.size() >= 1) xPin_ = pins[0];
+    if (pins.size() >= 2) yPin_ = pins[1];
+    if (pins.size() >= 3) switchPin_ = pins[2];
+    pinsInitialized_ = false;
+    calibrated_ = false;
+  }
 
-    }
-    void detach() override {
-      if (_x  >= 0) pinMode(_x, INPUT);
-      if (_y  >= 0) pinMode(_y, INPUT);
-    }
-    
- 
-  void reset() override { _calibrated = false; }
+  void detach() override {
+    if (xPin_ >= 0) pinMode(xPin_, INPUT);
+    if (yPin_ >= 0) pinMode(yPin_, INPUT);
+    if (switchPin_ >= 0) pinMode(switchPin_, INPUT);
+    pinsInitialized_ = false;
+    calibrated_ = false;
+  }
+
+  void reset() override { calibrated_ = false; }
   std::vector<KV> update() override;
-  const char* getType() override { return "Joystick"; }
+  DeviceType deviceType() const override { return DeviceType::Joystick; }
   bool init() override { return true; }
-  
-  // konfigurační parametry
-  void config(Param* params = nullptr, int count = 0) override {
-    for (int i = 0; i < count; ++i) {
-      String k = params[i].key;
-      k.trim();
-      k.toLowerCase();
-      if      (k == "res")       _res       = params[i].value.toInt();
-      else if (k == "threshold") _threshold = params[i].value.toInt();
+
+  /** Changes ADC resolution and joystick dead-zone configuration. */
+  void config(Param* parameters = nullptr, int count = 0) override {
+    for (int index = 0; index < count; ++index) {
+      String key = parameters[index].key;
+      key.trim();
+      key.toLowerCase();
+      if (key == "res") resolutionBits_ = parameters[index].value.toInt();
+      else if (key == "threshold") deadZonePercent_ = parameters[index].value.toInt();
     }
-    analogReadResolution(_res);
+    analogReadResolution(resolutionBits_);
   }
 
 private:
-  // helpery
-  void  calibrateCenter_(int res);
-  int   pctToAdcTol_(int pct) const;
+  void calibrateCenter(int resolutionBits);
+  int deadZoneTolerance(int percent) const;
 
-  // piny a nastavení
-  int  _x, _y, _sw;
-  int  _res;         // ADC rozlišení v bitech
-  int  _threshold;   // % mrtvé zóny (0–100)
-
-  // stav kalibrace
-  bool     _calibrated;
-  int      _cx, _cy;
-  int      _prevRes;
-  uint32_t _maxADC;
-
-  bool _pinsInited;
+  int xPin_;
+  int yPin_;
+  int switchPin_;
+  int resolutionBits_;
+  int deadZonePercent_;
+  bool calibrated_;
+  int centerX_;
+  int centerY_;
+  int previousResolutionBits_;
+  uint32_t maximumAdcValue_;
+  bool pinsInitialized_;
 };

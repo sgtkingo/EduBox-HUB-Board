@@ -1,17 +1,13 @@
-#ifndef ACTUATOR_HPP
-#define ACTUATOR_HPP
-#include "sensor.hpp"
+/**
+ * @file Actuator.hpp
+ * @brief Backward-compatible actuator alias for the unified Device API.
+ *
+ * Sensors and actuators now share Device, including UPDATE, CONFIG, and
+ * CONTROL. This alias avoids a flag-day rename in downstream sketches.
+ */
 
-// Třída Actuator
-class Actuator {
-  public:
-    virtual void control(Param* params = nullptr, int count = 0) {}  
-    virtual void reset() {} 
-    virtual ~Actuator() {}
-    virtual void init() {}
+#pragma once
 
-    virtual void attach(const std::vector<int>& pins) { (void)pins; }
-    virtual void detach() {}                       
-};
+#include "Device.hpp"
 
-#endif
+using Actuator = Device;

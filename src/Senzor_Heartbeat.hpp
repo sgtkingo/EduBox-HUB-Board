@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_Heartbeat.hpp
+ * @brief Heartbeat sensor declaration with configurable measurement window.
+ */
+
 #pragma once
 #include <Arduino.h>
 #include <vector>
@@ -10,7 +15,7 @@ public:
   bool            init()   override;                 // rychlý sanity check
   void            reset()  override{};
   std::vector<KV> update() override;                 // vrací {"bpm", ...}
-  const char*     getType() override { return "Heartbeat"; }
+  DeviceType deviceType() const override { return DeviceType::Heartbeat; }
 
 private:
   int _pin;

@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_Antc.hpp
+ * @brief Analog NTC temperature sensor declaration and filter configuration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -23,7 +28,7 @@ public:
   bool init() override { return true; }
 
   // typ senzoru
-  const char* getType() override { return "Antc"; }
+  DeviceType deviceType() const override { return DeviceType::AnalogNtc; }
 
   // Konfigurační parametry
   void config(Param* params=nullptr, int count=0) override {

@@ -13,7 +13,7 @@ void BuzzP_reset(int pin){
 } 
 
 
-void BuzzP::init() {
+bool BuzzP::init() {
   // Inicializace pinu jako výstup
   if (_freq <= 0) _freq = 1;          //1 Hz ~ „ticho“
   const int ch = chForPin(_pin);
@@ -29,4 +29,5 @@ void BuzzP::init() {
     ledcWrite(ch, 0);                 
     ledcDetachPin(_pin);              
   }
+  return _pin >= 0;
 }

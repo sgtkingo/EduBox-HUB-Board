@@ -1,3 +1,8 @@
+/**
+ * @file Senzor_HC_SR04.hpp
+ * @brief HC-SR04 ultrasonic distance device declaration.
+ */
+
 #pragma once
 
 #include <Arduino.h>
@@ -22,7 +27,7 @@ public:
   bool            init()   override;                 
   void            reset()  override {}
   std::vector<KV> update() override;                
-  const char*     getType() override { return "HCSR04"; }
+  DeviceType deviceType() const override { return DeviceType::UltrasonicHcSr04; }
 
   // Konfigurační parametry
   void config(Param* params = nullptr, int count = 0) override {
