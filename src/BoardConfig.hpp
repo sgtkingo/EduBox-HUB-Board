@@ -31,7 +31,7 @@ constexpr UartTransportConfig vscpUartConfig = {
 
 constexpr uint8_t joystickXPin = 15;
 constexpr uint8_t joystickYPin = 7;
-constexpr uint8_t joystickSwitchPin = 17;
+constexpr uint8_t joystickSwitchPin = 16;  // Separated from UART2 TX pin 17
 
 constexpr uint8_t terminal1Pin = 15;  // ADC2_05
 constexpr uint8_t terminal2Pin = 7;   // ADC2_04
