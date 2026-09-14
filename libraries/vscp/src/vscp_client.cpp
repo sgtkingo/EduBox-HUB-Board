@@ -17,11 +17,6 @@ ResponseStatus Client::transact(Command command, Parameters parameters, bool req
     return result;
   }
 
-  // Drain any stale/timed-out responses before starting a new transaction
-  String staleMessage;
-  while (transport_.readLine(staleMessage) == ReadStatus::Message) {
-  }
-
   transport_.writeLine(Codec::buildRequest(command, parameters));
   const unsigned long startedAt = detail::monotonicMilliseconds();
   while (detail::monotonicMilliseconds() - startedAt < timeoutMs_) {

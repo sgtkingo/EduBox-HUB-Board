@@ -182,7 +182,7 @@ int main() {
   assert(beforeInit.status == vscp::Status::Error);
   assert(beforeInit.error == "Protocol not initialized");
 
-  const vscp::ResponseStatus init = client.init("signal-twin", "1.3");
+  const vscp::ResponseStatus init = client.init("signal-twin", "1.4");
   assert(init.status == vscp::Status::Ok);
   assert(client.isInitialized());
 

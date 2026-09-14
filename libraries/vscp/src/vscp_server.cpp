@@ -16,7 +16,7 @@ void Server::on(Command command, Handler handler) {
 }
 
 Response Server::dispatch(Endpoint& endpoint, const Request& request) {
-  if (request.command != Command::Init && request.command != Command::Connect && !endpoint.initialized) {
+  if (request.command != Command::Init && !endpoint.initialized) {
     return Response::fail("Protocol not initialized");
   }
 
@@ -26,19 +26,13 @@ Response Server::dispatch(Endpoint& endpoint, const Request& request) {
   }
 
   Response response = handler->second(request);
-  if (request.command == Command::Init || request.command == Command::Connect) {
-    if (response.status == Status::Ok) {
-      endpoint.initialized = true;
-    }
+  if (request.command == Command::Init) {
+    endpoint.initialized = response.status == Status::Ok;
   }
   return response;
 }
 
 void Server::process(Endpoint& endpoint, const String& message) {
-  if (detail::stringLength(message) == 0 || detail::stringCharacter(message, 0) != '?') {
-    return;
-  }
-
   Request request;
   String parseError;
   if (!Codec::parseRequest(message, request, parseError)) {
