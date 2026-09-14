@@ -62,10 +62,12 @@ std::vector<DeviceParameter> VscpDeviceRouter::operationParameters(const vscp::R
 
 vscp::Response VscpDeviceRouter::handleInit(const vscp::Request& request) {
   const String requestedApi = request.value("api");
-  if (requestedApi.length() > 0 && !requestedApi.startsWith("1.")) {
+  if (requestedApi.length() > 0 && requestedApi != vscp::API_VERSION) {
     return vscp::Response::fail(String("API mismatch: expected ") + vscp::API_VERSION);
   }
-  return vscp::Response::ok();
+  vscp::Response response = vscp::Response::ok();
+  response.parameters["api"] = vscp::API_VERSION;
+  return response;
 }
 
 vscp::Response VscpDeviceRouter::handleConnect(const vscp::Request& request) {
