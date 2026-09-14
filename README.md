@@ -1,10 +1,28 @@
-# mtasenzory
-M-TA univerzalni program pro cteni dat ze senzoru
+# EduBox HUB Board
 
-[dokumentace](Dokumentace/Senzory_dokumentace.pdf)
+**EduBox HUB Board** je hardwarová a firmwarová část ekosystému
+[EduBox HUB](https://github.com/sgtkingo/EduBox-HUB). Centrální jednotka
+zajišťuje připojení senzorů a aktuátorů a zpřístupňuje je ostatním částem
+ekosystému prostřednictvím protokolu
+[EduBox HUB VSCP](https://github.com/sgtkingo/EduBox-HUB-VSCP).
 
-# M-TA Senzory (ESP32-S3)  
-Univerzální firmware pro čtení dat ze senzorů a ovládání aktuátorů na **ESP32-S3 DevKitC-1** (Arduino/PlatformIO) s jednoduchou integrací přes **VSCP**.
+## Zařazení v ekosystému
+
+```text
+EduBox HUB
+├── Board  ← tento repozitář
+├── App
+├── Panel
+│   └── Firmupdater
+└── VSCP
+```
+
+Firmware je určen pro **ESP32-S3 DevKitC-1** a slouží ke čtení dat ze
+senzorů, ovládání aktuátorů a komunikaci s
+[EduBox HUB App](https://github.com/sgtkingo/EduBox-HUB-App) nebo
+[EduBox HUB Panel](https://github.com/sgtkingo/EduBox-HUB-Panel).
+
+[Dokumentace senzorů](Dokumentace/Senzory_dokumentace.pdf)
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32-orange)](https://platformio.org/) 
 [![Board](https://img.shields.io/badge/Board-ESP32--S3--DevKitC--1-blue)](#požadavky) 
