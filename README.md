@@ -1,5 +1,7 @@
 # EduBox HUB Board
 
+![Logo EduBox HUB Board](assets/logo.svg)
+
 **EduBox HUB Board** je hardwarová a firmwarová část ekosystému
 [EduBox HUB](https://github.com/sgtkingo/EduBox-HUB). Centrální jednotka
 zajišťuje připojení senzorů a aktuátorů a zpřístupňuje je ostatním částem
