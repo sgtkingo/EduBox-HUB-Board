@@ -15,16 +15,28 @@ py -m venv .venv
 Před spuštěním zavřete PlatformIO Serial Monitor, protože jeden COM port nemůže
 být ve Windows otevřený dvěma programy současně.
 
+## Diagnostický monitor
+
+`monitor.py` pouze čte výpisy UART0, neposílá příkazy:
+
+    python monitor.py --ports
+    python monitor.py --port COM4
+    python monitor.py --port COM4 --levels ERROR,WARN
+    python monitor.py --port COM4 --timestamps --log monitor.log
+
+Ukončení přes Ctrl+C. Bez `--port` se vybere jediný dostupný port. Podrobnosti a další filtry jsou v [UART_DEBUG.md](../../Dokumentace/UART_DEBUG.md).
+
 ## Připojení k firmware
 
 Firmware nabízí protokol na těchto dvou rozhraních:
 
-- nativní USB CDC konektor ESP32-S3 (`Serial`);
+- UART0 přes USB-UART převodník (`Serial` při `ARDUINO_USB_CDC_ON_BOOT=0`, aktuální výchozí konfigurace);
 - UART2, `115200 8N1`, GPIO 18 = RX a GPIO 17 = TX.
 
 Vestavěný převodník Silicon Labs CP210x na DevKitC je obvykle připojený k
-programovacímu UART0 a firmware na něm protokol neposlouchá. Použijte druhý,
-nativní USB konektor desky, nebo externí USB/UART převodník zapojený křížem:
+UART0; aktuální firmware na něm poskytuje protokol i diagnostiku, pokud je
+`usbProtocolEnabled=true`. Nativní USB CDC vyžaduje jinou build konfiguraci.
+Pro UART2 použijte externí USB/UART převodník zapojený křížem:
 TX převodníku na GPIO 18, RX převodníku na GPIO 17 a společnou GND.
 
 ## Použití

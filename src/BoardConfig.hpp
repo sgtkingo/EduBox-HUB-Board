@@ -21,6 +21,10 @@ struct UartTransportConfig {
 };
 
 constexpr uint32_t usbProtocolBaudRate = 115200;
+// UART0 / USB-UART diagnostics (not native USB CDC).
+constexpr bool uartDebugEnabled = true;
+constexpr bool uartDebugTraceEnabled = true;
+constexpr bool usbProtocolEnabled = true;  // Keep emulator access on UART0
 constexpr UartTransportConfig vscpUartConfig = {
   2,
   115200,

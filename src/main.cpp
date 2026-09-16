@@ -8,6 +8,7 @@
  */
 
 #include "BoardConfig.hpp"
+#include "UartDebugger.hpp"
 
 #include <HardwareSerial.h>
 #include <devices.hpp>
@@ -72,8 +73,13 @@ RegisteredDevice registeredDevices[] = {
 constexpr size_t registeredDeviceCount = sizeof(registeredDevices) / sizeof(registeredDevices[0]);
 
 HardwareSerial protocolSerial(vscpUartConfig.port);
+#if ARDUINO_USB_CDC_ON_BOOT
+UartDebugger uartDebugger(Serial0);
+#else
+UartDebugger uartDebugger(Serial);  // Serial is UART0 when USB CDC is disabled.
+#endif
 vscp::StreamTransport usbTransport(Serial);
-vscp::StreamTransport uartTransport(protocolSerial);
+DebugUartTransport uartTransport(protocolSerial, uartDebugger);
 vscp::Server protocolServer;
 VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount);
 
@@ -81,8 +87,10 @@ VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount);
 
 void setup() {
   Serial.begin(usbProtocolBaudRate);
-  esp_log_level_set("*", ESP_LOG_ERROR);
-  esp_log_level_set("Wire", ESP_LOG_NONE);
+#if ARDUINO_USB_CDC_ON_BOOT
+  Serial0.begin(usbProtocolBaudRate);
+#endif
+  esp_log_level_set("*", uartDebugEnabled ? ESP_LOG_WARN : ESP_LOG_ERROR);
 
   protocolSerial.begin(
       vscpUartConfig.baudRate,
@@ -91,8 +99,12 @@ void setup() {
       vscpUartConfig.txPin);
 
   deviceRouter.registerHandlers(protocolServer);
-  protocolServer.addTransport(usbTransport);
+  if (usbProtocolEnabled) protocolServer.addTransport(usbTransport);
   protocolServer.addTransport(uartTransport);
+  uartDebugger.log("INFO", String("VSCP UART") + vscpUartConfig.port +
+                              " RX=" + vscpUartConfig.rxPin +
+                              " TX=" + vscpUartConfig.txPin +
+                              " baud=" + vscpUartConfig.baudRate);
 }
 
 void loop() {
