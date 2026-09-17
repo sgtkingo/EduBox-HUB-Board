@@ -46,7 +46,10 @@ public:
   void attach(const std::vector<int>& pins) override { pin_ = pins[0]; pinMode(pin_, INPUT); }
   void detach() override { ++detachCalls; pinMode(pin_, INPUT); }
   void reset() override { ++resetCalls; }
-  void config(const std::vector<DeviceParameter>& parameters) override { configured = parameters; }
+  void config(DeviceParameter* parameters, int count) override {
+    configured.clear();
+    if (parameters && count > 0) configured.assign(parameters, parameters + count);
+  }
 private:
   int pin_ = -1;
 };
