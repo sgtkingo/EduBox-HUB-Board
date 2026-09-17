@@ -8,6 +8,7 @@ VSCP = ROOT.parent / "vscp/src"
 DEVICES = ROOT.parent / "devices/src"
 SOURCES = [VSCP / name for name in (
     "vscp_client.cpp", "vscp_server.cpp", "vscp_codec.cpp", "vscp_types.cpp", "io/vscp_transport.cpp",
+    "io/vscp_stream_transport.cpp",
 )]
 with tempfile.TemporaryDirectory(prefix="edubox-control-safety-") as directory:
     for test in sorted((ROOT / "tests").glob("*_test.cpp")):

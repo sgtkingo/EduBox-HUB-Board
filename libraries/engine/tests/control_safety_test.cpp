@@ -41,10 +41,12 @@ protected:
 class Sensor : public Device {
 public:
   int detachCalls = 0, resetCalls = 0;
+  std::vector<DeviceParameter> configured;
   DeviceType deviceType() const override { return DeviceType::DigitalInput; }
   void attach(const std::vector<int>& pins) override { pin_ = pins[0]; pinMode(pin_, INPUT); }
   void detach() override { ++detachCalls; pinMode(pin_, INPUT); }
   void reset() override { ++resetCalls; }
+  void config(const std::vector<DeviceParameter>& parameters) override { configured = parameters; }
 private:
   int pin_ = -1;
 };
@@ -194,5 +196,25 @@ int main() {
   request(motionServer, motionWire, "?type=CONTROL&id=A00&angle=45&speed=100");
   assert(request(motionServer, motionWire, "?type=INIT&api=1.4").status == vscp::Status::Error);
   assert(!motionDevices[0].connected && pinValues[4] == LOW);
+  // Physical loss after dequeue but before dispatch cannot start a queued motion.
+  bool physicallyAvailable = true;
+  motionRouter.setTransportAvailabilityCheck([&](const vscp::Transport&) { return physicallyAvailable; });
+  init(motionServer, motionWire);
+  request(motionServer, motionWire, "?type=CONNECT&id=A00&pins=4");
+  const int startsBeforePhysicalLoss = servoStarts;
+  physicallyAvailable = false;
+  motionWire.incoming.push_back("?type=CONTROL&id=A00&angle=180");
+  motionServer.poll();
+  assert(!motionDevices[0].connected && servoStarts == startsBeforePhysicalLoss && pinValues[4] == LOW);
+  physicallyAvailable = true;
+  init(motionServer, motionWire); // Explicit fresh INIT permitted after release.
+  RegisteredDevice seqDevices[] = {{"S01", &sensor}};
+  Wire seqWire; vscp::Server seqServer; seqServer.addTransport(seqWire);
+  VscpDeviceRouter seqRouter(seqDevices, 1); seqRouter.registerHandlers(seqServer);
+  init(seqServer, seqWire);
+  request(seqServer, seqWire, "?type=CONNECT&id=S01&pins=21");
+  const auto seqResponse = request(seqServer, seqWire, "?type=CONFIG&id=S01&unit=C&seq=99");
+  assert(seqResponse.parameters.at("seq") == "99");
+  assert(sensor.configured.size() == 1 && sensor.configured[0].key == "unit");
   std::cout << "PASS ownership, lease, heartbeat, link loss, GPIO protection and actuator lifecycle\n";
 }

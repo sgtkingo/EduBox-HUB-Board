@@ -107,3 +107,18 @@ Závislosti jsou spravované přes `platformio.ini` (např. Adafruit knihovny, D
    platform = espressif32
    board    = esp32-s3-devkitc-1
    framework= arduino
+   ```
+
+## Bluetooth bridge (vývojová větev)
+
+Větev `bluetooth_bridge` přidává zabezpečený BLE peripheral vedle USB/UART.
+První pairing vyžaduje náhodný šestimístný PIN z lokální konzole Boardu a je
+otevřený 120 s po bootu nepřiřazené desky. Po normálním bootu lze držením BOOT
+3 s zastavit výstupy, zapomenout bond a restartovat commissioning.
+
+Sestavení bez uploadu: `pio run -e esp32-s3-devkitc-1 -j 4`.
+NimBLE-Arduino 2.5.1 a bezpečnostní build flagy jsou připnuté v platformio.ini.
+Výhradní řízení a fyzická omezení: [CONTROL_SAFETY.md](Dokumentace/CONTROL_SAFETY.md).
+Kompletní vrstvy, pairing a HW checklist:
+[Bluetooth bridge v EduBox-HUB](https://github.com/sgtkingo/EduBox-HUB/blob/bluetooth_bridge/docs/BLUETOOTH_BRIDGE.md).
+Rádio a fyzické výstupy musí být ověřeny na HW; nativní testy je nenahrazují.

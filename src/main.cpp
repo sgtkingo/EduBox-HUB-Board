@@ -154,7 +154,11 @@ void loop() {
       deviceRouter.notifyTransportDisconnected(bleTransport);
       deviceRouter.notifyTransportDisconnected(uartTransport);
       deviceRouter.notifyTransportDisconnected(usbTransport);
-      bleBridge.forgetBond();
+      if (!bleBridge.forgetBond()) {
+        Serial.println("[BLE] Bond reset failed; outputs stopped. Release BOOT to retry.");
+        bleButtonAt = millis();
+        return;
+      }
       Serial.println("[BLE] Bond forgotten; restarting for commissioning.");
       Serial.flush();
       ESP.restart();
