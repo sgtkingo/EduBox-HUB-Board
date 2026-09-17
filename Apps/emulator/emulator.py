@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serial client emulator for the EduBox VSCP 1.5 protocol."""
+"""Serial client emulator for the EduBox VSCP 1.6 protocol."""
 
 from __future__ import annotations
 
@@ -7,11 +7,14 @@ import argparse
 import shlex
 import sys
 import time
+import threading
+import queue
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
-API_VERSION = "1.5"
+API_VERSION = "1.6"
+LIBRARY_VERSION = "2.2.2"
 DEFAULT_BAUD_RATE = 115200
 DEFAULT_TIMEOUT = 1.0
 VALID_COMMANDS = {
@@ -21,6 +24,9 @@ VALID_COMMANDS = {
     "UPDATE",
     "CONFIG",
     "CONTROL",
+    "RESET",
+    "PING",
+    "BYE",
 }
 
 
@@ -69,7 +75,7 @@ def build_request(command: str, parameters: Mapping[str, str]) -> str:
     return "?" + "&".join(parts)
 
 
-def parse_response(line: str) -> ProtocolResponse:
+def parse_fields(line: str) -> Dict[str, str]:
     line = line.strip()
     if not line.startswith("?"):
         raise EmulatorError("Odpověď nezačíná znakem ?")
@@ -83,6 +89,16 @@ def parse_response(line: str) -> ProtocolResponse:
             raise EmulatorError("Odpověď obsahuje prázdný název parametru")
         parameters[key.strip()] = value.strip()
 
+    return parameters
+
+
+def valid_sequence(sequence: str) -> bool:
+    return bool(sequence) and len(sequence) <= 10 and sequence[0] != "0" and all(
+        character in "0123456789" for character in sequence) and int(sequence) <= 0xFFFFFFFF
+
+
+def parse_response(line: str) -> ProtocolResponse:
+    parameters = parse_fields(line)
     if "status" not in parameters:
         raise EmulatorError("V odpovědi chybí parametr status")
     return ProtocolResponse(raw=line, parameters=parameters)
@@ -164,38 +180,90 @@ class SerialLineTransport:
         except serial.SerialException as error:
             raise EmulatorError(f"Nelze otevřít port {port}: {error}") from error
 
+        self.session_closed = False
         self.timeout = timeout
         if boot_wait > 0:
             time.sleep(boot_wait)
         self._serial.reset_input_buffer()
 
-    def close(self) -> None:
-        self._serial.close()
-
-    def exchange(self, request: str) -> str:
+    def send(self, request: str) -> None:
         try:
-            # Match the C++ client: discard responses left behind by a timed-out request.
-            self._serial.reset_input_buffer()
             self._serial.write((request + "\n").encode("ascii"))
             self._serial.flush()
         except (UnicodeEncodeError, OSError, self._serial_exception) as error:
-            raise EmulatorError(f"Požadavek nelze odeslat: {error}") from error
+            raise EmulatorError(f"Request write failed: {error}") from error
 
+    def bye(self) -> None:
+        self.send(build_request("BYE", {"side": "client"}))
+        self.session_closed = True
+
+    def close(self) -> None:
+        try:
+            if not self.session_closed:
+                self.bye()
+        finally:
+            self._serial.close()
+
+    def _notification(self, fields: Mapping[str, str]) -> bool:
+        command = fields.get("type", "").upper()
+        if command == "BYE":
+            if fields.get("side") == "server" and "status" not in fields:
+                self.session_closed = True
+                raise EmulatorError("Peer disconnected")
+            return True
+        if command == "PING":
+            seq = fields.get("seq", "")
+            if fields.get("side") == "server" and "status" not in fields and valid_sequence(seq):
+                self.send(f"?side=client&seq={seq}&status=1")
+            return True
+        return False
+
+    def poll(self) -> None:
+        try:
+            raw = self._serial.readline()
+        except (OSError, self._serial_exception) as error:
+            raise EmulatorError(f"Response read failed: {error}") from error
+        if raw:
+            line = raw.decode("ascii", errors="ignore").strip()
+            if line.startswith("?"):
+                self._notification(parse_fields(line))
+
+    def exchange(self, request: str) -> str:
+        fields = parse_fields(request)
+        command = fields.get("type", "").upper()
+        if command == "BYE":
+            self.bye()
+            return ""
+        if self.session_closed and command not in {"INIT", "PING"}:
+            raise EmulatorError("Session closed; send INIT before device commands")
+        self.send(request)
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
             try:
                 raw_line = self._serial.readline()
             except (OSError, self._serial_exception) as error:
-                raise EmulatorError(f"Chyba při čtení odpovědi: {error}") from error
+                raise EmulatorError(f"Response read failed: {error}") from error
             if not raw_line:
                 continue
             line = raw_line.decode("ascii", errors="ignore").strip("\x00\r\n ")
-            # Boot messages and diagnostics do not belong to the protocol.
-            if line.startswith("?"):
-                return line
-            if line:
-                print(f"LOG {line}")
-        raise EmulatorError(f"Vypršel limit {self.timeout:.2f} s při čekání na odpověď")
+            if not line.startswith("?"):
+                if line: print(f"LOG {line}")
+                continue
+            response = parse_fields(line)
+            if self._notification(response):
+                continue
+            ping_reply = "type" not in response and all(key in response for key in ("side", "seq", "status"))
+            if ping_reply:
+                if (command == "PING" and response["side"] == "server" and
+                        response["seq"] == fields.get("seq") and valid_sequence(response["seq"]) and response["status"] == "1"):
+                    return line
+                continue
+            if command == "PING":
+                continue
+            if command == "INIT" and response.get("status") == "1":
+                self.session_closed = False
+            return line
+        raise EmulatorError(f"Response timeout after {self.timeout:.2f} s")
 
     def __enter__(self) -> "SerialLineTransport":
         return self
@@ -207,8 +275,17 @@ class SerialLineTransport:
 class VscpClient:
     def __init__(self, transport: SerialLineTransport) -> None:
         self.transport = transport
+        self._sequence = 0
 
-    def request(self, command: str, parameters: Mapping[str, str]) -> ProtocolResponse:
+    def request(self, command: str, parameters: Mapping[str, str]) -> Optional[ProtocolResponse]:
+        command = command.upper()
+        if command == "BYE":
+            self.bye()
+            return None
+        if command == "PING":
+            self._sequence = self._sequence % 0xFFFFFFFF + 1
+            parameters = {"side": "client", "seq": parameters.get("seq", str(self._sequence))}
+            if not valid_sequence(parameters["seq"]): raise EmulatorError("Invalid PING sequence")
         request = build_request(command, parameters)
         print(f"TX  {request}")
         raw_response = self.transport.exchange(request)
@@ -223,6 +300,16 @@ class VscpClient:
             )
         print("    OK" if response.ok else f"    CHYBA: {response.error or 'status=0'}")
         return response
+
+    def poll(self) -> None:
+        self.transport.poll()
+
+    def ping(self) -> ProtocolResponse:
+        return self.request("PING", {})
+
+    def bye(self) -> None:
+        print("TX  ?type=BYE&side=client")
+        self.transport.bye()
 
     def init(self, app: str = "python-emulator", database: str = "1.3") -> ProtocolResponse:
         return self.request("INIT", {"api": API_VERSION, "app": app, "db": database})
@@ -275,6 +362,8 @@ SHELL_HELP = """Příkazy:
   init [app=python-emulator] [db=1.3]
   connect UID PINY                  např. connect S03 7
   disconnect UID
+  ping
+  bye
   update UID
   config UID klíč=hodnota [...]
   control UID klíč=hodnota [...]
@@ -284,11 +373,27 @@ SHELL_HELP = """Příkazy:
 """
 
 
+def shell_input(client: VscpClient) -> str:
+    result = queue.Queue()
+    def read_input():
+        try: result.put((True, input("vscp> ").strip()))
+        except (EOFError, KeyboardInterrupt) as error: result.put((False, error))
+    threading.Thread(target=read_input, daemon=True).start()
+    while True:
+        try:
+            ok, value = result.get(timeout=0.05)
+            if not ok: raise value
+            return value
+        except queue.Empty:
+            try: client.poll()
+            except EmulatorError as error: print(f"\nERROR: {error}", file=sys.stderr)
+
+
 def run_shell(client: VscpClient) -> None:
     print(SHELL_HELP)
     while True:
         try:
-            line = input("vscp> ").strip()
+            line = shell_input(client)
         except (EOFError, KeyboardInterrupt):
             print()
             return
@@ -305,6 +410,10 @@ def run_shell(client: VscpClient) -> None:
             elif command == "init":
                 values = parse_assignments(arguments)
                 client.init(values.get("app", "python-emulator"), values.get("db", "1.3"))
+            elif command == "ping" and not arguments:
+                client.ping()
+            elif command == "bye" and not arguments:
+                client.bye()
             elif command == "connect" and len(arguments) == 2:
                 client.connect(arguments[0], arguments[1])
             elif command == "disconnect" and len(arguments) == 1:
@@ -325,7 +434,7 @@ def run_shell(client: VscpClient) -> None:
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Emulátor klienta komunikačního protokolu EduBox VSCP 1.5"
+        description="Emulátor klienta komunikačního protokolu EduBox VSCP 1.6"
     )
     parser.add_argument("--port", help="sériový port, např. COM4; při jediném portu se vybere automaticky")
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD_RATE, help="rychlost portu (výchozí: 115200)")

@@ -45,7 +45,7 @@ senzorů, ovládání aktuátorů a komunikaci s
 ## ✨ Funkce
 - Čtení mnoha analogových i digitálních senzorů (teplota, vlhkost, tlak, barva, vzdálenost, zvuk, IR, …).
 - Ovládání aktuátorů (servo, DC motor, krokový motor, bzučáky, RGB LED, laser, IR vysílač).
-- Komunikace přes **VSCP API 1.5** (USB Serial a UART2) – společný klientský codec a handler-based server.
+- Komunikace přes **VSCP API 1.6** (USB Serial a UART2) – společný klientský codec a handler-based server.
 - Konfigurovatelné piny a I²C (SDA/SCL) pro snadné zapojení.
 - Připraveno pro **PlatformIO** (rychlý build, upload, monitor).
 
