@@ -1,5 +1,7 @@
 #include <Stepper.hpp>
 #include <CheapStepper.h>
+#include <climits>
+#include <algorithm>
 
 // Validace pinů
 static inline bool validOutPin_(int p) {
@@ -9,10 +11,12 @@ static inline bool validOutPin_(int p) {
 
 // Uvolni piny
 void Stepper::releasePins_() {
-  if (_pin1 >= 0) pinMode(_pin1, INPUT);
-  if (_pin2 >= 0) pinMode(_pin2, INPUT);
-  if (_pin3 >= 0) pinMode(_pin3, INPUT);
-  if (_pin4 >= 0) pinMode(_pin4, INPUT);
+  for (const int pin : {_pin1, _pin2, _pin3, _pin4}) {
+    if (pin >= 0) {
+      digitalWrite(pin, LOW); // CheapStepper::stop() only cancels steps, not coil power.
+      pinMode(pin, INPUT);
+    }
+  }
   _pin1 = -1;
   _pin2 = -1;
   _pin3 = -1;
@@ -27,10 +31,10 @@ void Stepper::ensureDriver_() {
     return; 
   }
 
-  pinMode(_pin1, OUTPUT);
-  pinMode(_pin2, OUTPUT);
-  pinMode(_pin3, OUTPUT);
-  pinMode(_pin4, OUTPUT);
+  for (const int pin : {_pin1, _pin2, _pin3, _pin4}) {
+    digitalWrite(pin, LOW);
+    pinMode(pin, OUTPUT);
+  }
 
   _stp = new CheapStepper(_pin1, _pin2, _pin3, _pin4);
   _stp->setRpm(_rpm);
@@ -46,6 +50,9 @@ void Stepper::attach(const std::vector<int>& pins) {
   _pin2 = pins[1];
   _pin3 = pins[2];
   _pin4 = pins[3];
+  _angle = 0;
+  _dir = _connectDir;
+  _rpm = _connectRpm;
 
   ensureDriver_();
 }
@@ -58,6 +65,7 @@ void Stepper::detach() {
     _stp = nullptr;
   }
   releasePins_();
+  _positionSteps = 0;
 }
 
 bool Stepper::init() {
@@ -67,11 +75,12 @@ bool Stepper::init() {
 }
 
 void Stepper::control(Param* params, int count) {
+  bool requestedMove = false;
   for (int i = 0; i < count; ++i) {
     String k = params[i].key;
     k.trim();
     k.toLowerCase();
-    if      (k == "angle") _angle = params[i].value.toInt();
+    if (k == "angle") { _angle = params[i].value.toInt(); requestedMove = true; }
     else if (k == "dir") {
        String v = params[i].value;
        _dir = (v == "true" || v == "1");
@@ -82,26 +91,40 @@ void Stepper::control(Param* params, int count) {
   ensureDriver_();
   if (_stp) _stp->setRpm(_rpm);
 
-  int angleAbs = abs(_angle);
-  if (_stp && angleAbs > 0) {
-    _currentPos += _dir ? angleAbs : -angleAbs;
-    _stp->moveDegrees(_dir, angleAbs);
-    _stp->stop();
+  if (_stp && requestedMove) {
+    const int64_t magnitude = _angle < 0 ? -static_cast<int64_t>(_angle) : _angle;
+    const int steps = static_cast<int>(std::min<int64_t>(magnitude * 4096 / 360, INT_MAX));
+    _moveDir = _dir;
+    _stp->newMove(_dir, steps); // service() advances movement without blocking VSCP.
+    if (!steps) {
+      for (const int pin : {_pin1, _pin2, _pin3, _pin4}) digitalWrite(pin, LOW);
+    }
   }
 }
 
 void Stepper::reset() {
-  if (_currentPos != 0) {
+  if (_stp) _stp->stop();
+  if (_positionSteps != 0) {
     ensureDriver_();
     if (_stp) {
-      int backAngle = abs(_currentPos);
-      bool backDir  = (_currentPos > 0) ? false : true;
-      int oldRpm = _rpm;
-      _stp->setRpm(16);
-      _stp->moveDegrees(backDir, backAngle);
-      _stp->setRpm(oldRpm);
-      _stp->stop();
+      _moveDir = _positionSteps < 0;
+      const int64_t distance = _positionSteps < 0 ? -_positionSteps : _positionSteps;
+      _stp->newMove(_moveDir, static_cast<int>(std::min<int64_t>(distance, INT_MAX)));
     }
-    _currentPos = 0;
+  }
+  if (_stp && _positionSteps == 0) {
+    for (const int pin : {_pin1, _pin2, _pin3, _pin4}) digitalWrite(pin, LOW);
+  }
+}
+
+void Stepper::service() {
+  if (!_stp) return;
+  const int before = abs(_stp->getStepsLeft());
+  _stp->run();
+  const int after = abs(_stp->getStepsLeft());
+  const int completed = before - after;
+  if (completed > 0) _positionSteps += _moveDir ? completed : -completed;
+  if (before > 0 && after == 0) {
+    for (const int pin : {_pin1, _pin2, _pin3, _pin4}) digitalWrite(pin, LOW);
   }
 }

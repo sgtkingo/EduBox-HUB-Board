@@ -17,12 +17,7 @@ public:
 
   // konstruktor, pin lze předat nebo přiřadit přes attach
   Color7(int pin = -1, bool control = false)
-    : _pin(pin), _control(control) {
-    if (_pin >= 0) {
-      pinMode(_pin, OUTPUT);
-      Color7_control(_pin, _control);
-    }
-  }
+      : _pin(pin), _control(control) {}
 
   // Konfigurační parametry
   void control(Param* params = nullptr, int count = 0) override {
@@ -46,6 +41,7 @@ public:
   void attach(const std::vector<int>& pins) override {
     if (!pins.empty()) {
       _pin = pins[0];
+      _control = false;
       if (_pin >= 0) {
         pinMode(_pin, OUTPUT);
         Color7_control(_pin, _control);

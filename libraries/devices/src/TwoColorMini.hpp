@@ -28,6 +28,8 @@ public:
     _pinRed = pins[0];
     _pinGreen = pins[1];
     TwoColorMini_setPins(_pinRed, _pinGreen);
+    _Brightness = 0;
+    TwoColorMini_reset();
   }
 
   void detach() override {

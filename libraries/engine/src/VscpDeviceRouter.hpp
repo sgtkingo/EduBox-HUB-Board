@@ -12,12 +12,23 @@
 #include <vscp.hpp>
 
 #include <Device.hpp>
+#include "ExclusiveControlSession.hpp"
+#include <memory>
 
 class VscpDeviceRouter {
 public:
-  VscpDeviceRouter(RegisteredDevice* devices, size_t deviceCount);
+  VscpDeviceRouter(RegisteredDevice* devices, size_t deviceCount,
+                   uint32_t leaseMs = 10000, uint32_t probeIntervalMs = 3000,
+                   uint32_t probeTimeoutMs = 500,
+                   ExclusiveControlSession::Clock clock = nullptr);
 
   void registerHandlers(vscp::Server& server);
+  void poll();
+  // Future BLE disconnect events must call this from the protocol owner, not a callback.
+  void notifyTransportDisconnected(vscp::Transport& transport) {
+    if (session_) session_->release(transport);
+  }
+  void setReservedPins(std::vector<int> pins) { reservedPins_ = std::move(pins); }
 
 private:
   vscp::Response handleInit(const vscp::Request& request);
@@ -31,7 +42,15 @@ private:
   RegisteredDevice* findDevice(const String& uid);
   static bool parsePins(String rawPins, std::vector<int>& pins);
   static std::vector<DeviceParameter> operationParameters(const vscp::Request& request);
+  void stopDevice(RegisteredDevice& device);
+  void stopAllDevices();
+  using DeviceHandler = vscp::Response (VscpDeviceRouter::*)(const vscp::Request&);
+  void registerHandler(vscp::Server& server, vscp::Command command, DeviceHandler handler);
 
   RegisteredDevice* devices_;
   size_t deviceCount_;
+  uint32_t leaseMs_, probeIntervalMs_, probeTimeoutMs_;
+  ExclusiveControlSession::Clock clock_;
+  std::unique_ptr<ExclusiveControlSession> session_;
+  std::vector<int> reservedPins_;
 };

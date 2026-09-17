@@ -26,6 +26,8 @@ public:
     }
     _pinRed = pins[0];
     _pinGreen = pins[1];
+    _Brightness = 0;
+    TwoColor_control(_pinRed, _pinGreen, _color, 0);
   }
 
   // konfigurační parametry

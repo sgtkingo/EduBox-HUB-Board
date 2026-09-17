@@ -29,6 +29,8 @@ public:
     _pinG = pins[1];
     _pinB = pins[2];
     RGB_setPins(_pinR, _pinG, _pinB);
+    _BrigR = _BrigG = _BrigB = 0;
+    RGB_reset();
   }
 
   void detach() override {

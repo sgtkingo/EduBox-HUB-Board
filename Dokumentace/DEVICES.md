@@ -68,7 +68,7 @@ U digitálních modulů `state` znamená pouze úroveň GPIO; polarita „deteko
 | A10 | BuzzP | Pasivní bzučák | SIGNAL→15 (`A10 15`) | — | — | `freq` Hz; `duration` ms |
 | A11 | BuzzA | Aktivní bzučák | SIGNAL→15 (`A11 15`) | — | — | `control=true/1/on` zapnuto, jinak vypnuto |
 
-Motory ani servo výkonově nepřipojujte přímo k GPIO. A02 má výchozí `state=true` a při `CONNECT` okamžitě aplikuje PWM `speed=50` – motor se může rozběhnout před prvním `CONTROL`. A07 je také výchozí zapnutý; A08 při `CONNECT` odešle výchozí kód 0. Laserem nemiřte do očí. A05/A06 i dvoubarevné LED typy mají v implementaci sdílené statické piny a nejsou bezpečně nezávislé pro souběžné ovládání.
+Motory ani servo výkonově nepřipojujte přímo k GPIO. `CONNECT` nechává aktuátory vypnuté; spuštění vyžaduje explicitní `CONTROL` (u A02 například `speed=50&state=1`). Servo a krokový motor přijímají pohyb neblokujícím způsobem. Laserem nemiřte do očí. A05/A06 používají společný globální RGB driver a Board jejich současné připojení odmítá. Kolize GPIO s aktuátory a komunikačními piny se kontrolují. Pravidla výhradního řízení, dohledu spojení a zastavení při `BYE` jsou v [CONTROL_SAFETY.md](CONTROL_SAFETY.md).
 
 ## Příklad v emulátoru
 

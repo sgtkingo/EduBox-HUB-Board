@@ -23,7 +23,10 @@ public:
   void attach(const std::vector<int>& pins) override {
     if (pins.size() >= 1) {
       _pin = pins[0];
+      _control = false;
       Laser_setPin(_pin);
+      pinMode(_pin, OUTPUT);
+      digitalWrite(_pin, LOW);
     }
   }
 

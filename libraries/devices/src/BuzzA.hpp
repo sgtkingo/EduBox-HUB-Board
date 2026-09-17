@@ -25,6 +25,7 @@ public:
         pinMode(_pin, INPUT);
       }
       _pin = pins[0];
+      _control = false;
       pinMode(_pin, OUTPUT);
       digitalWrite(_pin, LOW);
     }
@@ -34,6 +35,7 @@ public:
   if (_pin >= 0) {
     digitalWrite(_pin, LOW);
     pinMode(_pin, INPUT);
+    _pin = -1;
   }
   }
 

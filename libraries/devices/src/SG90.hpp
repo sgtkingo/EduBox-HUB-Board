@@ -36,15 +36,18 @@ public:
   bool init() override {
     if (_pin < 0) return false;
     if (_servo.attached()) _servo.detach();
-    _servo.attach(_pin);
-    writeSmooth_(0, 0);
+    digitalWrite(_pin, LOW);
+    pinMode(_pin, OUTPUT); // No PWM until an explicit CONTROL.
     _lastAngle = 0;
+    _moving = false;
     SG90_setPin(_pin); 
     return true;
   }
 
   // Reset = reinicializace
-  void reset() override { init(); }
+  void reset() override {
+    if (init()) { _angle = 0; apply_(); } // Explicit RESET retains the return-to-zero behavior.
+  }
 
   
   void attach(const std::vector<int>& pins) override {
@@ -54,7 +57,7 @@ public:
         if (_servo.attached()) _servo.detach();
         if (_pin >= 0) pinMode(_pin, INPUT);
         _pin = newPin;
-        _servo.attach(_pin);
+        _angle = 0;
         SG90_setPin(_pin); 
       }
     }
@@ -62,9 +65,22 @@ public:
 
   // Bezpečné uvolnění při DISCONNECT
   void detach() override {
+    _moving = false;
     if (_servo.attached()) _servo.detach();
     if (_pin >= 0) pinMode(_pin, INPUT);
+    _pin = -1;
     SG90_setPin(-1);
+  }
+
+  void service() override {
+    if (!_moving || !_servo.attached() || _pin < 0) return;
+    const uint32_t now = millis();
+    const uint32_t delayMs = static_cast<uint32_t>(speedToDelayMs_(_speed));
+    if (static_cast<uint32_t>(now - _lastStepMs) < delayMs) return;
+    _lastStepMs = now;
+    _lastAngle += _lastAngle < _angle ? 1 : -1;
+    _servo.write(_lastAngle);
+    _moving = _lastAngle != _angle;
   }
 
 private:
@@ -75,27 +91,18 @@ private:
     return map(speed, 0, 100, 100, 0);
   }
 
-  void writeSmooth_(int targetAngle, int speedMs) {
-    targetAngle = constrain(targetAngle, 0, 180);
-    if (speedMs <= 0) { _servo.write(targetAngle); return; }
-    int step = (_lastAngle < targetAngle) ? 1 : -1;
-    for (int pos = _lastAngle; pos != targetAngle; pos += step) {
-      _servo.write(pos);
-      delay(speedMs);
-    }
-    _servo.write(targetAngle);
-  }
-
   void apply_() {
     if (_pin < 0) return;
     if (!_servo.attached()) _servo.attach(_pin);
     int d = speedToDelayMs_(_speed);
     _angle = constrain(_angle, 0, 180);
-    if (_angle != _lastAngle) {
-      writeSmooth_(_angle, d);
+    _lastStepMs = millis();
+    _moving = d > 0 && _angle != _lastAngle;
+    if (!_moving) {
+      _servo.write(_angle);
       _lastAngle = _angle;
     } else {
-      _servo.write(_angle);
+      _servo.write(_lastAngle);
     }
   }
 
@@ -104,4 +111,6 @@ private:
   int   _angle = 0;   // 0..180
   int   _speed = 0;   // 0..100
   int   _lastAngle = 0;
+  uint32_t _lastStepMs = 0;
+  bool _moving = false;
 };

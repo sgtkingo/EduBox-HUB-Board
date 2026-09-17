@@ -13,7 +13,7 @@ class Stepper : public Actuator {
 public:
   Stepper(int pin1, int pin2, int pin3, int pin4, int angle, bool dir, int rpm)
     : _pin1(pin1), _pin2(pin2), _pin3(pin3), _pin4(pin4),
-      _angle(angle), _dir(dir), _rpm(rpm) {}
+      _angle(angle), _dir(dir), _rpm(rpm), _connectDir(dir), _connectRpm(rpm) {}
 
 
 
@@ -24,6 +24,7 @@ public:
   bool init() override;
   void control(Param* params = nullptr, int count = 0) override;
   void reset() override;
+  void service() override;
 
 private:
   int _pin1 = -1, _pin2 = -1, _pin3 = -1, _pin4 = -1;
@@ -32,7 +33,10 @@ private:
   int  _angle = 0;     // úhel v °
   bool _dir   = true;  // true=fwd, false=back
   int  _rpm   = 16;    // RPM (revolutions per minute)
-  int  _currentPos = 0; // akumulace v ° (pro reset)
+  const bool _connectDir;
+  const int _connectRpm;
+  int64_t _positionSteps = 0; // Actual completed steps, including interrupted moves.
+  bool _moveDir = true;
 
   void ensureDriver_();       // vytvoří _stp, nastaví piny
   void releasePins_();        // piny do INPUT

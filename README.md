@@ -84,6 +84,10 @@ Nastavení pinů probíhá v připojeném GUI (ESP displej/ Windows aplikace)
 Architektura protokolu, společný model `Device` a příklady komunikace jsou v
 [`Dokumentace/VSCP_INTEGRATION_ANALYSIS.md`](Dokumentace/VSCP_INTEGRATION_ANALYSIS.md).
 
+[Bezpečnost řízení](Dokumentace/CONTROL_SAFETY.md): první úspěšný INIT získá
+výhradní řízení Boardu. CONNECT nechává aktuátory vypnuté; BYE nebo výpadek
+dohledu zastaví výstupy. Nový klient potřebuje nový INIT a CONNECT.
+
 ---
 
 ## 📦 Požadavky

@@ -39,7 +39,7 @@ public:
       _pin = pins[0];
       if (_pin >= 0) {
         pinMode(_pin, OUTPUT);
-        IRtx_control(_pin, _code);
+        digitalWrite(_pin, LOW); // CONNECT must not transmit an IR command.
       }
     }
   }

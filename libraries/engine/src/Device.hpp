@@ -99,6 +99,8 @@ public:
   virtual DeviceType deviceType() const = 0;
   virtual size_t requiredPinCount() const { return 1; }
   virtual bool init() { return true; }
+  // Bounded, non-blocking work; Board calls this while the device is connected.
+  virtual void service() {}
   virtual std::vector<DeviceValue> update() { return {}; }
   virtual void config(DeviceParameter* parameters = nullptr, int count = 0) {
     (void)parameters;

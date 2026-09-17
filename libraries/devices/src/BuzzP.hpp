@@ -28,7 +28,10 @@ public:
   void detach() override {
   if (_pin >= 0) {
     noTone(_pin);
+    ledcDetachPin(_pin);
+    digitalWrite(_pin, LOW);
     pinMode(_pin, INPUT);
+    _pin = -1;
   }
   }
 

@@ -16,7 +16,7 @@ public:
   DeviceType deviceType() const override { return DeviceType::DcMotor; }
 
   DC(int pin, int Speed, bool state)
-    : _pin(pin), _Speed(Speed), _state(state) {}
+    : _pin(pin), _Speed(Speed), _state(state), _connectSpeed(Speed) {}
 
   void control(Param* params = nullptr, int count = 0) override {
     for (int i = 0; i < count; ++i) {
@@ -41,6 +41,8 @@ public:
   void attach(const std::vector<int>& pins) override {
     if (!pins.empty()) {
       _pin = pins[0];
+      _state = false; // CONNECT never starts a motor, including after reconnect.
+      _Speed = _connectSpeed; // Fresh default, not the previous client's speed.
       if (_pin >= 0) {
         pinMode(_pin, OUTPUT);
         DC_control(_pin, _Speed, _state);
@@ -52,6 +54,8 @@ public:
   void detach() override {
     if (_pin >= 0) {
       DC_reset();
+      ledcDetachPin(_pin);
+      digitalWrite(_pin, LOW);
       pinMode(_pin, INPUT);
       _pin = -1;
     }
@@ -61,4 +65,5 @@ private:
   int _pin;
   int _Speed;
   bool _state;
+  const int _connectSpeed;
 };

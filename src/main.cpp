@@ -56,18 +56,19 @@ RegisteredDevice registeredDevices[] = {
   {"S34", new SensorDigitalRead(terminal2Pin, 34, "HGswitch")},
   {"S35", new SensorDigitalRead(terminal2Pin, 35, "Tap")},
 
-  {"A00", new SG90(terminal1Pin, 42, 100)},
-  {"A01", new Stepper(terminal1Pin, terminal2Pin, terminal3Pin, terminal4Pin, 42, true, 16)},
-  {"A02", new DC(terminal1Pin, 50, true)},
-  {"A03", new TwoColor(terminal3Pin, terminal4Pin, 'R', 50)},
-  {"A04", new TwoColorMini(terminal4Pin, terminal3Pin, 'G', 100)},
-  {"A05", new RGB(terminal1Pin, terminal2Pin, terminal3Pin, 0, 0, 50)},
-  {"A06", new RGB(terminal1Pin, terminal2Pin, terminal3Pin, 0, 0, 50)},
-  {"A07", new Color7(terminal1Pin, true)},
-  {"A08", new IRtx(terminal2Pin, 0)},
-  {"A09", new Laser(terminal2Pin, true)},
-  {"A10", new BuzzP(terminal1Pin, 1000, 500)},
-  {"A11", new BuzzA(terminal1Pin, true)}
+  // Actuators own no GPIO and produce no output before CONNECT + CONTROL.
+  {"A00", new SG90(-1, 0, 100)},
+  {"A01", new Stepper(-1, -1, -1, -1, 0, true, 16)},
+  {"A02", new DC(-1, 50, false)},
+  {"A03", new TwoColor(-1, -1, 'R', 0)},
+  {"A04", new TwoColorMini(-1, -1, 'G', 0)},
+  {"A05", new RGB()},
+  {"A06", new RGB()},
+  {"A07", new Color7(-1, false)},
+  {"A08", new IRtx(-1, 0)},
+  {"A09", new Laser(-1, false)},
+  {"A10", new BuzzP(-1, 1000, 500)},
+  {"A11", new BuzzA(-1, false)}
 };
 
 constexpr size_t registeredDeviceCount = sizeof(registeredDevices) / sizeof(registeredDevices[0]);
@@ -81,7 +82,8 @@ UartDebugger uartDebugger(Serial);  // Serial is UART0 when USB CDC is disabled.
 vscp::StreamTransport usbTransport(Serial);
 DebugUartTransport uartTransport(protocolSerial, uartDebugger);
 vscp::Server protocolServer;
-VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount);
+VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount,
+    vscpControlLeaseMs, vscpControlProbeIntervalMs, vscpControlProbeTimeoutMs);
 
 }  // namespace
 
@@ -99,6 +101,11 @@ void setup() {
       vscpUartConfig.txPin);
 
   deviceRouter.registerHandlers(protocolServer);
+  deviceRouter.setReservedPins({vscpUartConfig.rxPin, vscpUartConfig.txPin, 43, 44
+#if ARDUINO_USB_CDC_ON_BOOT
+      , 19, 20
+#endif
+  });
   if (usbProtocolEnabled) protocolServer.addTransport(usbTransport);
   protocolServer.addTransport(uartTransport);
   uartDebugger.log("INFO", String("VSCP UART") + vscpUartConfig.port +
@@ -108,5 +115,7 @@ void setup() {
 }
 
 void loop() {
+  deviceRouter.poll();
   protocolServer.poll();
+  deviceRouter.poll();
 }
