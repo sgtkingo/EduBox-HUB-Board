@@ -15,6 +15,9 @@
 #include <engine.hpp>
 #include <esp_log.h>
 #include <vscp.hpp>
+#if EDUBOX_BLE_ENABLED
+#include <edubox_ble.hpp>
+#endif
 
 namespace {
 
@@ -84,6 +87,13 @@ DebugUartTransport uartTransport(protocolSerial, uartDebugger);
 vscp::Server protocolServer;
 VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount,
     vscpControlLeaseMs, vscpControlProbeIntervalMs, vscpControlProbeTimeoutMs);
+#if EDUBOX_BLE_ENABLED
+edubox::ble::Channel bleChannel;
+edubox::ble::Transport bleTransport(bleChannel);
+edubox::ble::Peripheral bleBridge(bleChannel);
+uint32_t bleButtonAt = 0;
+bool bleButtonHeld = false;
+#endif
 
 }  // namespace
 
@@ -108,6 +118,27 @@ void setup() {
   });
   if (usbProtocolEnabled) protocolServer.addTransport(usbTransport);
   protocolServer.addTransport(uartTransport);
+#if EDUBOX_BLE_ENABLED
+  pinMode(bleResetButtonPin, INPUT_PULLUP);
+  deviceRouter.setTransportAvailabilityCheck([](const vscp::Transport& transport) {
+    return &transport != &bleTransport || bleChannel.online();
+  });
+  // GPIO0 is reserved for local bond reset, not a remotely assignable output.
+  deviceRouter.setReservedPins({vscpUartConfig.rxPin, vscpUartConfig.txPin, 43, 44,
+      bleResetButtonPin
+#if ARDUINO_USB_CDC_ON_BOOT
+      , 19, 20
+#endif
+  });
+  const String bleName = String("EduBox-Board-") + String(uint32_t(ESP.getEfuseMac()), HEX);
+  if (bleBridge.begin(bleName.c_str(), false, blePairingWindowMs)) {
+    protocolServer.addTransport(bleTransport);
+    Serial.printf("[BLE] %s PIN=%06lu pairing=120s (local console only)\n",
+        bleName.c_str(), static_cast<unsigned long>(bleBridge.pairingPin()));
+  } else {
+    Serial.println("[BLE] Initialization failed; UART remains available.");
+  }
+#endif
   uartDebugger.log("INFO", String("VSCP UART") + vscpUartConfig.port +
                               " RX=" + vscpUartConfig.rxPin +
                               " TX=" + vscpUartConfig.txPin +
@@ -115,7 +146,23 @@ void setup() {
 }
 
 void loop() {
+#if EDUBOX_BLE_ENABLED
+  if (bleBridge.poll()) deviceRouter.notifyTransportDisconnected(bleTransport);
+  if (digitalRead(bleResetButtonPin) == LOW) {
+    if (!bleButtonHeld) { bleButtonAt = millis(); bleButtonHeld = true; }
+    if (uint32_t(millis() - bleButtonAt) >= 3000) {
+      deviceRouter.notifyTransportDisconnected(bleTransport);
+      deviceRouter.notifyTransportDisconnected(uartTransport);
+      deviceRouter.notifyTransportDisconnected(usbTransport);
+      bleBridge.forgetBond();
+      Serial.println("[BLE] Bond forgotten; restarting for commissioning.");
+      Serial.flush();
+      ESP.restart();
+    }
+  } else bleButtonHeld = false;
+#endif
   deviceRouter.poll();
   protocolServer.poll();
   deviceRouter.poll();
+  delay(1); // Yield to NimBLE/FreeRTOS; no transport blocking here.
 }

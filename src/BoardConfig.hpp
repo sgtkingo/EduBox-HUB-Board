@@ -25,6 +25,12 @@ constexpr uint32_t usbProtocolBaudRate = 115200;
 constexpr uint32_t vscpControlLeaseMs = 10000;
 constexpr uint32_t vscpControlProbeIntervalMs = 3000;
 constexpr uint32_t vscpControlProbeTimeoutMs = 500;
+// BLE is an additional transport, never an automatic UART takeover.
+#ifndef EDUBOX_BLE_ENABLED
+#define EDUBOX_BLE_ENABLED 1
+#endif
+constexpr uint32_t blePairingWindowMs = 120000;
+constexpr int bleResetButtonPin = 0; // Hold BOOT 3 s AFTER normal boot to forget bond.
 // UART0 / USB-UART diagnostics (not native USB CDC).
 constexpr bool uartDebugEnabled = true;
 constexpr bool uartDebugTraceEnabled = true;

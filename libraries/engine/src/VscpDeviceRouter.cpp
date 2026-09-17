@@ -30,6 +30,10 @@ void VscpDeviceRouter::registerHandlers(vscp::Server& server) {
 void VscpDeviceRouter::registerHandler(vscp::Server& server, vscp::Command command, DeviceHandler handler) {
   server.on(command, [this, command, handler](const vscp::Request& request, vscp::Transport& transport) {
     session_->poll(); // Expire ownership before a queued command can renew a stale lease.
+    if (availability_ && !availability_(transport)) {
+      session_->release(transport);
+      return vscp::Response::fail("Physical transport disconnected");
+    }
     if (!session_->availableTo(transport)) return vscp::Response::fail("Board busy: another client owns control");
     if (command != vscp::Command::Init && !session_->owns(transport))
       return vscp::Response::fail("Control session required: send INIT");
@@ -104,7 +108,7 @@ std::vector<DeviceParameter> VscpDeviceRouter::operationParameters(const vscp::R
     if (parameter.first == "type" || parameter.first == "id" ||
         parameter.first == "api" || parameter.first == "app" ||
         parameter.first == "db" || parameter.first == "pin" ||
-        parameter.first == "pins") {
+        parameter.first == "pins" || parameter.first == "seq") {
       continue;
     }
     parameters.push_back({parameter.first, parameter.second});

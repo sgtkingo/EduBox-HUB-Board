@@ -1,0 +1,37 @@
+name: Bluetooth bridge validation
+on:
+  push:
+    branches: [bluetooth_bridge]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ble-board-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python libraries/vscp/tests/run_tests.py
+      - run: python libraries/edubox-ble/tests/run_tests.py
+      - run: python libraries/engine/tests/run_tests.py
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install platformio==6.1.18
+      - run: pio run -e esp32-s3-devkitc-1 -j 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: board-bluetooth-bridge
+          path: |
+            .pio/build/esp32-s3-devkitc-1/firmware.bin
+            .pio/build/esp32-s3-devkitc-1/bootloader.bin
+            .pio/build/esp32-s3-devkitc-1/partitions.bin

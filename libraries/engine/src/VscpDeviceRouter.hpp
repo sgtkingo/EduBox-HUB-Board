@@ -29,6 +29,7 @@ public:
     if (session_) session_->release(transport);
   }
   void setReservedPins(std::vector<int> pins) { reservedPins_ = std::move(pins); }
+  void setTransportAvailabilityCheck(std::function<bool(const vscp::Transport&)> check) { availability_ = std::move(check); }
 
 private:
   vscp::Response handleInit(const vscp::Request& request);
@@ -53,4 +54,5 @@ private:
   ExclusiveControlSession::Clock clock_;
   std::unique_ptr<ExclusiveControlSession> session_;
   std::vector<int> reservedPins_;
+  std::function<bool(const vscp::Transport&)> availability_;
 };
