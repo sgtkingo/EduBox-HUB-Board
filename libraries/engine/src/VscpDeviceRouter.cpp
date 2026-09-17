@@ -104,9 +104,7 @@ vscp::Response VscpDeviceRouter::handleConnect(const vscp::Request& request) {
 vscp::Response VscpDeviceRouter::handleDisconnect(const vscp::Request& request) {
   RegisteredDevice* registered = findDevice(request.value("id"));
   if (!registered) return vscp::Response::fail("Device not found");
-  if (!registered->connected) return vscp::Response::fail("Device not connected");
-
-  registered->device->detach();
+  if (registered->connected) registered->device->detach();
   registered->connected = false;
   registered->initialized = false;
   registered->pins.clear();
