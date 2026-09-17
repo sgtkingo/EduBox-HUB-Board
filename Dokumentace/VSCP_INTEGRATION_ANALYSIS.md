@@ -2,7 +2,7 @@
 
 ## Výsledek refactoringu
 
-Firmware používá společný **Virtual Sensors Communication Protocol** API `1.4`
+Firmware používá společný **Virtual Sensors Communication Protocol** API `1.5`
 pro klienta i server. Implementace vychází z
 [`sgtkingo/VSCP`](https://github.com/sgtkingo/VSCP), commit
 `0d4b02f03802966ba4497bc603d76b5d32922ead`, ale původní globální klient a UART
@@ -18,7 +18,7 @@ Zkratka VSCP zde neoznačuje eventový Very Simple Control Protocol z vscp.org.
   `VSCP_API_VERSION`, `MAX_PROTOCOL_REQUEST_SIZE`, `PROTOCOL_INIT_TIMEOUT`,
   `PROTOCOL_VERBOSE` a přepínače podporovaných desktopových adaptérů lze přepsat
   build flagy. Konfigurace fyzického UARTu do knihovny nepatří.
-- `vscp_types.hpp` definuje API `1.4`, příkazy, stav a datové struktury.
+- `vscp_types.hpp` definuje API `1.5`, příkazy, stav a datové struktury.
 - `vscp_codec.hpp` parsuje a serializuje řádkové zprávy
   `?key=value&key2=value2`.
 - `src/io/vscp_transport.hpp` odděluje protokol od konkrétní komunikační linky.
@@ -95,7 +95,7 @@ C++ metody.
 
 | Příkaz | Handler |
 | --- | --- |
-| `INIT` | Kontrola API `1.4`. |
+| `INIT` | Kontrola API `1.5`. |
 | `CONNECT` | Vyhledání UID, parsování pinů, `attach()` a `init()`. |
 | `DISCONNECT` | `detach()` a vyčištění connection state. |
 | `UPDATE` | `Device::update()` a převod hodnot do response. |
@@ -130,7 +130,7 @@ inicializace.
 ## Příklad komunikace
 
 ```text
-> ?type=INIT&app=board&db=1.0&api=1.4
+> ?type=INIT&app=board&db=1.0&api=1.5
 < ?status=1
 
 > ?type=CONNECT&id=S01&pins=7

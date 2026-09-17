@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serial client emulator for the EduBox VSCP 1.4 protocol."""
+"""Serial client emulator for the EduBox VSCP 1.5 protocol."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
-API_VERSION = "1.4"
+API_VERSION = "1.5"
 DEFAULT_BAUD_RATE = 115200
 DEFAULT_TIMEOUT = 1.0
 VALID_COMMANDS = {
@@ -325,7 +325,7 @@ def run_shell(client: VscpClient) -> None:
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Emulátor klienta komunikačního protokolu EduBox VSCP 1.4"
+        description="Emulátor klienta komunikačního protokolu EduBox VSCP 1.5"
     )
     parser.add_argument("--port", help="sériový port, např. COM4; při jediném portu se vybere automaticky")
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD_RATE, help="rychlost portu (výchozí: 115200)")
