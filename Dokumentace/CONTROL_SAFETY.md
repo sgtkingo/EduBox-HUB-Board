@@ -1,6 +1,6 @@
 # Výhradní řízení Boardu a bezpečné ukončení relace
 
-Politika je v Boardu; formát VSCP zůstává API 1.6. UART a USB nemohou současně
+Politika je v Boardu; formát VSCP zůstává API 1.6. UART, USB a BLE nemohou současně
 řídit stejný globální registr fyzických zařízení.
 
 ## Vlastník řízení
@@ -24,13 +24,18 @@ V `src/BoardConfig.hpp` jsou nastavení:
 
 Běžný požadavek vlastníka nebo správná odpověď na Board PING obnoví dohled.
 Nečinný klient proto musí obsluhovat příchozí PING: C++ klient pomocí `Client::poll()`.
-Panel tuto obsluhu již volá. Úspěšné předání zápisu nepotvrzuje doručení protistraně.
+Panel tuto obsluhu volá jen v platné, neztracené relaci. Po lokálním ukončení
+nebo ztrátě relace už nesmí odpovídáním na PING prodlužovat běh výstupů.
+Úspěšné předání zápisu nepotvrzuje doručení protistraně.
 Board po vypršení dohledu zkusí odeslat BYE, ale vypne výstupy a zruší vlastní
 relaci i tehdy, když zápis selže. Obnovení spojení nepřehrává staré CONTROL příkazy.
 
-Budoucí BLE transport musí předat událost ztráty spojení do hlavní smyčky a zavolat
-`deviceRouter.notifyTransportDisconnected(transport)`. Tato cesta zastaví zařízení
-bez čekání na lease. Volání VSCP a routeru přímo z BLE callbacku není dovoleno.
+BLE bridge předává událost ztráty spojení do hlavní smyčky a volá
+`deviceRouter.notifyTransportDisconnected(transport)` před novým dispatch a
+obsluhou pohybu. Tato cesta zastaví zařízení bez čekání na lease. Router navíc
+kontroluje fyzickou dostupnost transportu před vykonáním příkazu. Volání VSCP a
+routeru přímo z BLE callbacku není dovoleno. Nepotvrzený CONTROL v Panelu
+vyvolá best-effort BYE, lokální uzavření relace a odpojení BLE; příkaz se neopakuje.
 
 ## Aktuátory
 
@@ -69,8 +74,10 @@ piny: dosud používají společný globální RGB driver.
   aby zůstaly vypnuté také při bootu/resetu a bez připojeného MCU.
 - Servo bez PWM nemusí mechanicky držet zatížení. Pro takové aplikace je
   nutná samostatná brzda nebo jiná hardwarová ochrana.
-- Vlastnictví transportu není autentizace. BLE bridge musí později přidat
-  šifrování, ověřené párování a vazbu transportu na konkrétního peer.
+- Vlastnictví transportu není autentizace. BLE bridge navíc vyžaduje Secure
+  Connections, MITM, bonding a vazbu na uloženou autentizovanou identitu peeru.
+  UART/USB nejsou tímto mechanismem autentizované. Lokální konzole/PIN a BOOT
+  vyžadují fyzickou ochranu. Viz [návod bridge v superprojektu](https://github.com/sgtkingo/EduBox-HUB/blob/bluetooth_bridge/docs/BLUETOOTH_BRIDGE.md).
 
 ## Testy
 
