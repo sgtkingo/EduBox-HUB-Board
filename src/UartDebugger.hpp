@@ -25,7 +25,7 @@ public:
 
   void frame(const char* direction, const String& message) {
     if (uartDebugTraceEnabled) {
-      log(direction, String("UART") + vscpUartConfig.port + " " + message);
+      log(direction, message);
     }
   }
 
@@ -33,47 +33,113 @@ private:
   Print& output_;
 };
 
-class DebugUartTransport : public vscp::StreamTransport {
+/** Tracks one protocol endpoint so INIT and failures have useful context. */
+class ProtocolDebugger {
 public:
-  DebugUartTransport(Stream& stream, UartDebugger& debugger)
-      : vscp::StreamTransport(stream, vscp::MAX_MESSAGE_SIZE,
-                              uartDebugEnabled ? &debugger : nullptr),
-        debugger_(debugger) {}
+  ProtocolDebugger(UartDebugger& debugger, const char* transportName)
+      : debugger_(debugger), transportName_(transportName) {}
+
+  void received(const String& message) {
+    debugger_.frame("RX", String(transportName_) + " " + message);
+
+    vscp::Request request;
+    String parseError;
+    if (!vscp::Codec::parseRequest(message, request, parseError)) return;
+    initPending_ = request.command == vscp::Command::Init;
+    if (!initPending_) return;
+
+    debugger_.log("DEBUG", String("INIT started transport=") + transportName_ +
+        " app=" + valueOrDash(request, "app") +
+        " api=" + valueOrDash(request, "api") +
+        " db=" + valueOrDash(request, "db"));
+  }
+
+  void sent(const String& message, bool written) {
+    if (written) debugger_.frame("TX", String(transportName_) + " " + message);
+
+    vscp::ResponseStatus response;
+    String parseError;
+    const bool parsed = vscp::Codec::parseResponse(message, response, parseError);
+    if (!written && initPending_) {
+      debugger_.log("ERROR", String("INIT response write failed transport=") + transportName_);
+    } else if (!written) {
+      debugger_.log("ERROR", String("VSCP transport=") + transportName_ +
+          " response write failed");
+    } else if (parsed && initPending_) {
+      if (response.status == vscp::Status::Ok) {
+        debugger_.log("DEBUG", String("INIT completed transport=") + transportName_ +
+            " api=" + responseValueOrDash(response, "api"));
+      } else {
+        debugger_.log("ERROR", String("INIT failed transport=") + transportName_ +
+            " error=" + errorOrStatus(response));
+      }
+    } else if (parsed && response.status == vscp::Status::Error) {
+      const auto idEntry = response.parameters.find("id");
+      const String id = idEntry != response.parameters.end() ? idEntry->second : String("-");
+      debugger_.log("ERROR", String("VSCP transport=") + transportName_ +
+          " id=" + id + " error=" + errorOrStatus(response));
+    }
+    if (parsed && response.status == vscp::Status::Ok) warnInvalidValues(response);
+    initPending_ = false;
+  }
+
+  void readError(const char* error) {
+    debugger_.log("ERROR", String("VSCP transport=") + transportName_ + " error=" + error);
+  }
+
+private:
+  static String valueOrDash(const vscp::Request& request, const char* key) {
+    const String value = request.value(key);
+    return value.length() ? value : String("-");
+  }
+
+  static String responseValueOrDash(const vscp::ResponseStatus& response, const char* key) {
+    const auto entry = response.parameters.find(key);
+    return entry != response.parameters.end() ? entry->second : String("-");
+  }
+
+  static String errorOrStatus(const vscp::ResponseStatus& response) {
+    return response.error.length() ? response.error : String("status=0");
+  }
+
+  void warnInvalidValues(const vscp::ResponseStatus& response) {
+    const auto idEntry = response.parameters.find("id");
+    const String id = idEntry != response.parameters.end() ? idEntry->second : String("-");
+    for (const auto& value : response.parameters) {
+      String normalized = value.second;
+      normalized.toLowerCase();
+      if (normalized == "nan" || normalized == "inf" || normalized == "-inf") {
+        debugger_.log("WARN", String("VSCP transport=") + transportName_ +
+            " id=" + id + " invalid sensor value " + value.first + "=" + value.second);
+      }
+    }
+  }
+
+  UartDebugger& debugger_;
+  const char* transportName_;
+  bool initPending_ = false;
+};
+
+class DebugStreamTransport : public vscp::StreamTransport {
+public:
+  DebugStreamTransport(Stream& stream, UartDebugger& debugger, const char* transportName)
+      : vscp::StreamTransport(stream), protocolDebugger_(debugger, transportName) {}
 
 protected:
   vscp::ReadStatus readLineImpl(String& message) override {
     const auto status = vscp::StreamTransport::readLineImpl(message);
-    if (status == vscp::ReadStatus::Message) debugger_.frame("RX", message);
+    if (status == vscp::ReadStatus::Message) protocolDebugger_.received(message);
+    else if (status == vscp::ReadStatus::MessageTooLong)
+      protocolDebugger_.readError("request too long");
     return status;
   }
 
   bool writeLineImpl(const String& message) override {
     const bool written = vscp::StreamTransport::writeLineImpl(message);
-    if (!uartDebugEnabled) return written;
-    if (written) debugger_.frame("TX", message);
-
-    vscp::ResponseStatus response;
-    String parseError;
-    if (vscp::Codec::parseResponse(message, response, parseError)) {
-      const auto idEntry = response.parameters.find("id");
-      const String id = idEntry != response.parameters.end() ? idEntry->second : String("-");
-      if (response.status == vscp::Status::Error) {
-        debugger_.log("ERROR", String("VSCP id=") + id +
-                                  " " + response.error);
-      } else {
-        for (const auto& value : response.parameters) {
-          String normalized = value.second;
-          normalized.toLowerCase();
-          if (normalized == "nan" || normalized == "inf" || normalized == "-inf") {
-            debugger_.log("WARN", String("VSCP id=") + id +
-                                     " invalid sensor value " + value.first + "=" + value.second);
-          }
-        }
-      }
-    }
+    protocolDebugger_.sent(message, written);
     return written;
   }
 
 private:
-  UartDebugger& debugger_;
+  ProtocolDebugger protocolDebugger_;
 };

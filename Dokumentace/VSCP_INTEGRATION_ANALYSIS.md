@@ -170,7 +170,7 @@ je nutné licenční podmínky vyjasnit s vlastníkem upstream repozitáře.
 Projekt je sestavitelný příkazem:
 
 ```powershell
-C:\Users\jirka\.platformio\penv\Scripts\platformio.exe run
+pio run
 ```
 
 Ověřený build environment: `nodemcu-32s`, framework Arduino, knihovna `vscp`

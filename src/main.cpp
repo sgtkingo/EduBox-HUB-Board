@@ -21,6 +21,32 @@
 
 namespace {
 
+#if EDUBOX_BLE_ENABLED
+class DebugBleTransport : public edubox::ble::Transport {
+public:
+  DebugBleTransport(edubox::ble::Channel& channel, UartDebugger& debugger)
+      : edubox::ble::Transport(channel), protocolDebugger_(debugger, "BT") {}
+
+protected:
+  vscp::ReadStatus readLineImpl(String& message) override {
+    const auto status = edubox::ble::Transport::readLineImpl(message);
+    if (status == vscp::ReadStatus::Message) protocolDebugger_.received(message);
+    else if (status == vscp::ReadStatus::MessageTooLong)
+      protocolDebugger_.readError("request too long");
+    return status;
+  }
+
+  bool writeLineImpl(const String& message) override {
+    const bool written = edubox::ble::Transport::writeLineImpl(message);
+    protocolDebugger_.sent(message, written);
+    return written;
+  }
+
+private:
+  ProtocolDebugger protocolDebugger_;
+};
+#endif
+
 RegisteredDevice registeredDevices[] = {
   {"S00", new DS18B20()},
   {"S01", new DHT11x(terminal2Pin)},
@@ -82,17 +108,19 @@ UartDebugger uartDebugger(Serial0);
 #else
 UartDebugger uartDebugger(Serial);  // Serial is UART0 when USB CDC is disabled.
 #endif
-vscp::StreamTransport usbTransport(Serial);
-DebugUartTransport uartTransport(protocolSerial, uartDebugger);
+DebugStreamTransport usbTransport(Serial, uartDebugger, "USB");
+DebugStreamTransport uartTransport(protocolSerial, uartDebugger, "UART2");
 vscp::Server protocolServer;
 VscpDeviceRouter deviceRouter(registeredDevices, registeredDeviceCount,
     vscpControlLeaseMs, vscpControlProbeIntervalMs, vscpControlProbeTimeoutMs);
 #if EDUBOX_BLE_ENABLED
 edubox::ble::Channel bleChannel;
-edubox::ble::Transport bleTransport(bleChannel);
+DebugBleTransport bleTransport(bleChannel, uartDebugger);
 edubox::ble::Peripheral bleBridge(bleChannel);
 uint32_t bleButtonAt = 0;
 bool bleButtonHeld = false;
+bool bleWasOnline = false;
+edubox::ble::Stats bleLastStats;
 #endif
 
 }  // namespace
@@ -102,6 +130,7 @@ void setup() {
 #if ARDUINO_USB_CDC_ON_BOOT
   Serial0.begin(usbProtocolBaudRate);
 #endif
+  uartDebugger.log("DEBUG", "Board initialization started");
   esp_log_level_set("*", uartDebugEnabled ? ESP_LOG_WARN : ESP_LOG_ERROR);
 
   protocolSerial.begin(
@@ -109,6 +138,7 @@ void setup() {
       vscpUartConfig.frameFormat,
       vscpUartConfig.rxPin,
       vscpUartConfig.txPin);
+  uartDebugger.log("DEBUG", String("UART") + vscpUartConfig.port + " initialized");
 
   deviceRouter.registerHandlers(protocolServer);
   deviceRouter.setReservedPins({vscpUartConfig.rxPin, vscpUartConfig.txPin, 43, 44
@@ -131,35 +161,59 @@ void setup() {
 #endif
   });
   const String bleName = String("EduBox-Board-") + String(uint32_t(ESP.getEfuseMac()), HEX);
+  uartDebugger.log("DEBUG", String("BT bridge initialization started name=") + bleName +
+      " pairing_window_ms=" + blePairingWindowMs);
   if (bleBridge.begin(bleName.c_str(), false, blePairingWindowMs)) {
     protocolServer.addTransport(bleTransport);
-    Serial.printf("[BLE] %s PIN=%06lu pairing=120s (local console only)\n",
-        bleName.c_str(), static_cast<unsigned long>(bleBridge.pairingPin()));
+    bleLastStats = bleChannel.stats();
+    uartDebugger.log("DEBUG", String("BT bridge initialized name=") + bleName +
+        " advertising=1");
+    uartDebugger.log("INFO", String("BT bridge PIN=") + bleBridge.pairingPin() +
+        " pairing_window_ms=" + blePairingWindowMs + " (local console only)");
   } else {
-    Serial.println("[BLE] Initialization failed; UART remains available.");
+    uartDebugger.log("ERROR", "BT bridge initialization failed; UART remains available");
   }
 #endif
   uartDebugger.log("INFO", String("VSCP UART") + vscpUartConfig.port +
                               " RX=" + vscpUartConfig.rxPin +
                               " TX=" + vscpUartConfig.txPin +
                               " baud=" + vscpUartConfig.baudRate);
+  uartDebugger.log("DEBUG", "Board initialization completed");
 }
 
 void loop() {
 #if EDUBOX_BLE_ENABLED
-  if (bleBridge.poll()) deviceRouter.notifyTransportDisconnected(bleTransport);
+  const bool bleLost = bleBridge.poll();
+  const bool bleOnline = bleChannel.online();
+  if (bleOnline && !bleWasOnline) {
+    uartDebugger.log("DEBUG", "BT bridge online; peer authenticated and subscribed");
+  }
+  if (bleLost) {
+    const auto stats = bleChannel.stats();
+    if (stats.faults != bleLastStats.faults) {
+      uartDebugger.log("ERROR", String("BT bridge fault; releasing control session faults=") +
+          stats.faults);
+    } else {
+      uartDebugger.log("WARN", String("BT bridge disconnected; releasing control session disconnects=") +
+          stats.disconnects);
+    }
+    bleLastStats = stats;
+    deviceRouter.notifyTransportDisconnected(bleTransport);
+  }
+  bleWasOnline = bleOnline;
   if (digitalRead(bleResetButtonPin) == LOW) {
     if (!bleButtonHeld) { bleButtonAt = millis(); bleButtonHeld = true; }
     if (uint32_t(millis() - bleButtonAt) >= 3000) {
+      uartDebugger.log("DEBUG", "BT bond reset requested; stopping all transport sessions");
       deviceRouter.notifyTransportDisconnected(bleTransport);
       deviceRouter.notifyTransportDisconnected(uartTransport);
       deviceRouter.notifyTransportDisconnected(usbTransport);
       if (!bleBridge.forgetBond()) {
-        Serial.println("[BLE] Bond reset failed; outputs stopped. Release BOOT to retry.");
+        uartDebugger.log("ERROR", "BT bond reset failed; outputs stopped; release BOOT to retry");
         bleButtonAt = millis();
         return;
       }
-      Serial.println("[BLE] Bond forgotten; restarting for commissioning.");
+      uartDebugger.log("DEBUG", "BT bond forgotten; restarting for commissioning");
       Serial.flush();
       ESP.restart();
     }

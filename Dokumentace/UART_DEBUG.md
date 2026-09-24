@@ -2,9 +2,10 @@
 
 Debugger vypisuje na UART0 (USB-UART konektor, ne nativní USB CDC) rychlostí 115200 baud:
 
-- `LOG [čas_ms][RX] UART2 ...` – kompletní požadavek přijatý podle `vscpUartConfig`.
-- `LOG [čas_ms][TX] UART2 ...` – odpověď odeslaná na tento UART.
-- `LOG [čas_ms][ERROR] ...` – chyba rámce/zápisu nebo VSCP odpověď se `status=0`.
+- `LOG [čas_ms][RX] USB|UART2|BT ...` – kompletní požadavek přijatý z daného transportu.
+- `LOG [čas_ms][TX] USB|UART2|BT ...` – odpověď odeslaná přes daný transport.
+- `LOG [čas_ms][DEBUG] ...` – průběh inicializace Boardu, BT bridge a workflow `INIT`.
+- `LOG [čas_ms][ERROR] ...` – chyba rámce/zápisu, BT bridge nebo VSCP odpověď se `status=0`; řádek obsahuje transport, ID a důvod, pokud jsou dostupné.
 - `LOG [čas_ms][WARN] ...` – neplatná hodnota senzoru (`nan`, `inf`, `-inf`).
 
 V `src/BoardConfig.hpp` nastavte `uartDebugEnabled=false` pro vypnutí aplikační diagnostiky, nebo `uartDebugTraceEnabled=false` pro vypnutí pouze RX/TX. `usbProtocolEnabled=false` vyhradí UART0 pro diagnostiku a vypne jeho VSCP server; UART podle `vscpUartConfig` zůstane aktivní. Ve výchozím stavu zůstává na UART0 i protokol, aby fungoval Python emulátor (řádky nezačínající `?` ignoruje).
