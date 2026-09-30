@@ -29,6 +29,10 @@ constexpr uint32_t vscpControlProbeTimeoutMs = 500;
 #ifndef EDUBOX_BLE_ENABLED
 #define EDUBOX_BLE_ENABLED 1
 #endif
+#ifndef EDUBOX_BLE_PAIRING_KEY
+#define EDUBOX_BLE_PAIRING_KEY "EduBox-HUB-Board-PIN-v1-2026"
+#endif
+constexpr const char* blePairingKey = EDUBOX_BLE_PAIRING_KEY;
 constexpr uint32_t blePairingWindowMs = 120000;
 constexpr int bleResetButtonPin = 0; // Hold BOOT 3 s AFTER normal boot to forget bond.
 // UART0 / USB-UART diagnostics (not native USB CDC).
@@ -39,8 +43,8 @@ constexpr UartTransportConfig vscpUartConfig = {
   2,
   115200,
   SERIAL_8N1,
-  18,
-  17
+  18, //RX
+  17 //TX
 };
 
 constexpr uint8_t joystickXPin = 15;

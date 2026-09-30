@@ -18,6 +18,37 @@
 #if EDUBOX_BLE_ENABLED
 #include <edubox_ble.hpp>
 #endif
+#include <mbedtls/md.h>
+#include <cstdio>
+#include <cstring>
+
+String makeBleBoardId() {
+  const uint64_t identity = ESP.getEfuseMac() & 0x0000FFFFFFFFFFFFULL;
+  char value[17];
+  std::snprintf(value, sizeof(value), "EB-%04lX-%08lX",
+      static_cast<unsigned long>((identity >> 32) & 0xFFFFULL),
+      static_cast<unsigned long>(identity & 0xFFFFFFFFULL));
+  return String(value);
+}
+
+uint32_t makeBlePairingPin(const String& boardId) {
+  const auto* algorithm = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  unsigned char digest[32]{};
+  if (!algorithm || mbedtls_md_hmac(algorithm,
+      reinterpret_cast<const unsigned char*>(blePairingKey), std::strlen(blePairingKey),
+      reinterpret_cast<const unsigned char*>(boardId.c_str()), boardId.length(), digest) != 0) {
+    return 0;
+  }
+  const uint32_t value = (uint32_t(digest[0]) << 24) | (uint32_t(digest[1]) << 16) |
+      (uint32_t(digest[2]) << 8) | uint32_t(digest[3]);
+  return 100000U + (value % 900000U);
+}
+
+String formatBlePin(uint32_t pin) {
+  char value[7];
+  std::snprintf(value, sizeof(value), "%06lu", static_cast<unsigned long>(pin));
+  return String(value);
+}
 
 namespace {
 
@@ -118,6 +149,8 @@ edubox::ble::Channel bleChannel;
 DebugBleTransport bleTransport(bleChannel, uartDebugger);
 edubox::ble::Peripheral bleBridge(bleChannel);
 uint32_t bleButtonAt = 0;
+String bleBoardId;
+uint32_t bleCommissioningPin = 0;
 bool bleButtonHeld = false;
 bool bleWasOnline = false;
 edubox::ble::Stats bleLastStats;
@@ -160,16 +193,36 @@ void setup() {
       , 19, 20
 #endif
   });
-  const String bleName = String("EduBox-Board-") + String(uint32_t(ESP.getEfuseMac()), HEX);
-  uartDebugger.log("DEBUG", String("BT bridge initialization started name=") + bleName +
+  bleBoardId = makeBleBoardId();
+  bleCommissioningPin = makeBlePairingPin(bleBoardId);
+  uartDebugger.log("DEBUG", String("BT bridge initialization started board_id=") + bleBoardId +
       " pairing_window_ms=" + blePairingWindowMs);
-  if (bleBridge.begin(bleName.c_str(), false, blePairingWindowMs)) {
+  if (bleCommissioningPin != 0 &&
+      bleBridge.begin(bleBoardId.c_str(), bleCommissioningPin, false, blePairingWindowMs)) {
+    protocolServer.on(vscp::Command::Pair, [](const vscp::Request& request, vscp::Transport& source) {
+      if (&source != &uartTransport) return vscp::Response::fail("PAIR requires Board UART");
+      const bool reset = request.has("reset") && request.value("reset") == "1";
+      if (request.has("reset") && !reset) return vscp::Response::fail("Invalid reset");
+      if (bleBridge.paired() && !reset) return vscp::Response::fail("already_paired");
+      if (reset) {
+        deviceRouter.notifyTransportDisconnected(bleTransport);
+        if (!bleBridge.forgetBond(blePairingWindowMs))
+          return vscp::Response::fail("pairing_reset_failed");
+      } else if (!bleBridge.openPairingWindow(blePairingWindowMs)) {
+        return vscp::Response::fail(bleBridge.paired() ? "already_paired" : "pairing_unavailable");
+      }
+      auto response = vscp::Response::ok();
+      response.parameters["board_id"] = bleBoardId;
+      response.parameters["pin"] = formatBlePin(bleCommissioningPin);
+      return response;
+    });
     protocolServer.addTransport(bleTransport);
     bleLastStats = bleChannel.stats();
-    uartDebugger.log("DEBUG", String("BT bridge initialized name=") + bleName +
+    uartDebugger.log("DEBUG", String("BT bridge initialized board_id=") + bleBoardId +
         " advertising=1");
-    uartDebugger.log("INFO", String("BT bridge PIN=") + bleBridge.pairingPin() +
-        " pairing_window_ms=" + blePairingWindowMs + " (local console only)");
+    uartDebugger.log("INFO", String("BT Board ID=") + bleBoardId +
+        " PIN=" + formatBlePin(bleCommissioningPin) +
+        " pairing_window_ms=" + blePairingWindowMs);
   } else {
     uartDebugger.log("ERROR", "BT bridge initialization failed; UART remains available");
   }
