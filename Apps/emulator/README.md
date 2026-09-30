@@ -2,7 +2,7 @@
 
 Python nástroj emuluje klienta komunikujícího s firmwarem EduBox HUB po USB
 Serial nebo UART2. Podporuje příkazy `INIT`, `CONNECT`, `DISCONNECT`, `UPDATE`,
-`CONFIG` a `CONTROL` protokolu VSCP API 1.6.
+`CONFIG` a `CONTROL` protokolu VSCP API 1.7.
 
 ## Instalace
 
@@ -87,14 +87,14 @@ vscp> disconnect A09
 Jeden samostatný požadavek lze poslat pomocí `send`:
 
 ```powershell
-.venv\Scripts\python emulator.py --port COM4 send INIT api=1.6 app=test db=1.3
+.venv\Scripts\python emulator.py --port COM4 send INIT api=1.7 app=test db=1.3
 ```
 
 Emulátor vypisuje přesný odeslaný (`TX`) a přijatý (`RX`) rámec. Firmware
 vyžaduje inicializaci pro všechny příkazy kromě `INIT` a `CONNECT`; samostatná
 spuštění `send` proto nemají sdílený stav relace.
 
-## VSCP 1.6 / library 2.2.2 session commands
+## VSCP 1.7 / library 2.3.0 session commands
 
 `ping` sends a correlated client PING and validates the server acknowledgement
 without `type`. Server PING requests are answered during transactions and while

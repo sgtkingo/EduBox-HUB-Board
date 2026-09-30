@@ -1,0 +1,1 @@
+- Doplnit github release workflow s verzováním jako u Panelu

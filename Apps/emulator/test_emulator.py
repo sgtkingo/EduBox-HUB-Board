@@ -57,13 +57,13 @@ class SessionTests(unittest.TestCase):
         return transport
 
     def test_bidirectional_ping_and_response_routing(self):
-        self.assertEqual((API_VERSION, LIBRARY_VERSION), ("1.6", "2.2.2"))
+        self.assertEqual((API_VERSION, LIBRARY_VERSION), ("1.7", "2.3.0"))
         wire = self.transport(("?side=server&seq=999&status=1", "?type=PING&side=server&seq=7",
                                "?side=server&seq=22&status=1"))
         self.assertEqual(wire.exchange("?type=PING&side=client&seq=22"), "?side=server&seq=22&status=1")
         self.assertEqual(wire._serial.sent, ["?type=PING&side=client&seq=22", "?side=client&seq=7&status=1"])
-        wire._serial.lines.extend(("?side=server&seq=22&status=1", "?api=1.6&status=1"))
-        self.assertEqual(wire.exchange("?type=INIT&api=1.6"), "?api=1.6&status=1")
+        wire._serial.lines.extend(("?side=server&seq=22&status=1", "?api=1.7&status=1"))
+        self.assertEqual(wire.exchange("?type=INIT&api=1.7"), "?api=1.7&status=1")
 
     def test_bye_is_one_way_and_requires_new_init(self):
         wire = self.transport()
@@ -72,8 +72,8 @@ class SessionTests(unittest.TestCase):
         self.assertFalse(wire._serial.closed)
         with self.assertRaises(EmulatorError):
             wire.exchange("?type=UPDATE&id=S01")
-        wire._serial.lines.append("?api=1.6&status=1")
-        wire.exchange("?type=INIT&api=1.6")
+        wire._serial.lines.append("?api=1.7&status=1")
+        wire.exchange("?type=INIT&api=1.7")
         self.assertFalse(wire.session_closed)
         wire.close()
         self.assertTrue(wire._serial.closed)

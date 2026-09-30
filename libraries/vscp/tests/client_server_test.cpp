@@ -112,12 +112,12 @@ int main() {
   stripReceiver.connectTo(stripSender);
   vscp::String dirtyMessage;
   dirtyMessage += static_cast<char>(1);
-  dirtyMessage += "  ?type=INIT&api=1.6  ";
+  dirtyMessage += "  ?type=INIT&api=1.7  ";
   dirtyMessage += static_cast<char>(127);
   stripSender.writeLine(dirtyMessage);
   vscp::String cleanMessage;
   assert(stripReceiver.readLine(cleanMessage) == vscp::ReadStatus::Message);
-  assert(cleanMessage == "?type=INIT&api=1.6");
+  assert(cleanMessage == "?type=INIT&api=1.7");
 
   MemoryTransport clientTransport;
   MemoryTransport serverTransport;

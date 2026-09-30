@@ -63,7 +63,7 @@ static vscp::ResponseStatus request(vscp::Server& server, Wire& wire, const Stri
   return response;
 }
 static void init(vscp::Server& server, Wire& wire) {
-  assert(request(server, wire, "?type=INIT&api=1.6").status == vscp::Status::Ok);
+  assert(request(server, wire, "?type=INIT&api=1.7").status == vscp::Status::Ok);
 }
 
 int main() {
@@ -83,7 +83,7 @@ int main() {
   assert(pinValues[15] == LOW); // No startup PWM even with constructor state=true.
   assert(request(server, uart, "?type=CONTROL&id=A02&state=1&speed=75").status == vscp::Status::Ok);
   const int runningPwm = pinValues[15]; assert(runningPwm > 0);
-  assert(request(server, usb, "?type=INIT&api=1.6").status == vscp::Status::Error);
+  assert(request(server, usb, "?type=INIT&api=1.7").status == vscp::Status::Error);
   assert(request(server, usb, "?type=CONTROL&id=A02&state=0").status == vscp::Status::Error);
   assert(request(server, usb, "?type=RESET&id=A*").status == vscp::Status::Error);
   assert(pinValues[15] == runningPwm);
@@ -140,7 +140,7 @@ int main() {
   router.notifyTransportDisconnected(usb);
   nowMs = UINT32_MAX - 1500; init(server, uart);
   nowMs = 1000; router.poll();
-  assert(request(server, usb, "?type=INIT&api=1.6").status == vscp::Status::Error);
+  assert(request(server, usb, "?type=INIT&api=1.7").status == vscp::Status::Error);
   nowMs = 9000; router.poll(); init(server, usb);
 
   // Real actuator lifecycle code: CONNECT silent; detach never runs RESET movement.

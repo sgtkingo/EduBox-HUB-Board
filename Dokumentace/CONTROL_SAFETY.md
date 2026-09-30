@@ -1,6 +1,6 @@
 # Výhradní řízení Boardu a bezpečné ukončení relace
 
-Politika je v Boardu; formát VSCP zůstává API 1.6. UART, USB a BLE nemohou současně
+Politika je v Boardu; formát VSCP zůstává API 1.7. UART, USB a BLE nemohou současně
 řídit stejný globální registr fyzických zařízení.
 
 ## Vlastník řízení
@@ -43,7 +43,7 @@ CONNECT připraví zařízení, ale nezačne pohyb motoru/serva, nezapne laser/L
 nepíská a nevysílá IR. Aktivace vyžaduje explicitní CONTROL. U DC motoru například:
 
 ```text
-?type=INIT&api=1.6
+?type=INIT&api=1.7
 ?type=CONNECT&id=A02&pins=15
 ?type=CONTROL&id=A02&speed=50&state=1
 ?type=BYE&side=client

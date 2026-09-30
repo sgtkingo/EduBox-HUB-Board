@@ -1,6 +1,6 @@
 # VSCP client/server library
 
-The library implements **Virtual Sensors Communication Protocol** API `1.6`. Library version: `2.2.3`.
+The library implements **Virtual Sensors Communication Protocol** API `1.7`. Library version: `2.3.0`.
 It is not the event-based Very Simple Control Protocol.
 
 ## Components
