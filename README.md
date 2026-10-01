@@ -115,3 +115,31 @@ Firmware nabízí zabezpečený BLE peripheral vedle USB/UART. Postup párován�
 reset bondu, provozní chování a řešení potíží popisuje
 [BLE bridge guide](docs/BLE_BRIDGE.md). NimBLE-Arduino 2.5.1 a bezpečnostní
 build flagy jsou připnuté v `platformio.ini`.
+
+### Doporučeno: automatické párování pomocí kabelu
+
+![Default automatic Bluetooth pairing: Panel connected by commissioning cable to Board](img/bluetooth_cable_pairing.svg)
+
+Jde o výchozí a doporučený způsob uvedení do provozu. Kabel slouží pouze
+k identifikaci a autorizaci správné desky. Po spárování běžná komunikace přejde
+na Bluetooth, takže kabel lze odpojit, jakmile se zobrazí obrazovka úspěšného
+dokončení.
+
+1. Zapněte **Panel** a **desku**.
+2. Na Panelu otevřete **Communication** a klepněte na **Wireless (BLE)**.
+3. Pokud si Panel nepamatuje žádnou desku, vyzve vás k připojení kabelem. Propojte
+   desku přímo s Panelem pomocí UART kabelu pro uvedení do provozu.
+4. Počkejte, než Panel načte Board ID a PIN, vyhledá právě tuto desku a dokončí
+   bezpečné Bluetooth párování. PIN není třeba zadávat.
+5. Po zobrazení **Success!** odpojte kabel pro uvedení do provozu a klepněte na
+   **Continue**.
+
+Panel si desku zapamatuje. Při dalších použitích klepnutím na **Wireless (BLE)**
+automaticky spustíte Bluetooth připojení a zobrazí se ukazatel průběhu.
+
+Pokud je připojená deska už spárovaná s jiným Panelem, po výzvě zvolte
+**Forget Board & replace pairing**. Během odstraňování předchozího párování
+z obou zařízení ponechte kabel připojený.
+
+Vývojářský postup verzování a vydávání firmware je v
+[release workflow dokumentaci](docs/dev/RELEASE_WORKFLOW.md).

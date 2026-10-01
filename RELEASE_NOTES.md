@@ -10,6 +10,3 @@
   neplatnou relaci ani nechtěně zahájit opětovné párování.
 - VSCP používá API 1.7 a knihovnu 2.3.0. Aktualizovány emulátor, dokumentace a
   testovací scénáře.
-
-Validace firmware a knihoven se spouští workflow `Bluetooth bridge validation`
-na větvi `bluetooth_bridge`.

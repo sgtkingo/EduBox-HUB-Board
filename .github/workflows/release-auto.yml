@@ -1,0 +1,235 @@
+name: Release Auto
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-auto-main
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      bump_type: ${{ steps.gate.outputs.bump_type }}
+      next_version: ${{ steps.version.outputs.next }}
+      tag: ${{ steps.version.outputs.tag }}
+      build_ref: ${{ steps.bump.outputs.build_ref }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gate - decide bump type from commit message
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Release workflow must run from main." >&2
+            exit 1
+          fi
+
+          message="$(git log -1 --pretty=%B)"
+
+          if [[ "$message" == chore\(release\):* ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          bump="none"
+          if [[ "$message" == "(major)"* ]]; then bump="major"; fi
+          if [[ "$message" == "(minor)"* ]]; then
+            [[ "$bump" == "none" ]] || { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="minor"
+          fi
+          if [[ "$message" == "(patch)"* ]]; then
+            [[ "$bump" == "none" ]] || { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="patch"
+          fi
+          if [[ "$message" == "(build)"* ]]; then
+            [[ "$bump" == "none" ]] || { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="build"
+          fi
+
+          if [[ "$bump" == "none" ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$bump" >> "$GITHUB_OUTPUT"
+
+      - name: Read VERSION and compute next version
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f VERSION ]]; then
+            echo "Missing VERSION file." >&2
+            exit 1
+          fi
+
+          current="$(tr -d ' \r\n\t' < VERSION)"
+          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid VERSION '$current' (expected x.y.z.b)." >&2
+            exit 1
+          fi
+
+          IFS='.' read -r major minor patch build <<< "$current"
+          case "${{ steps.gate.outputs.bump_type }}" in
+            major) major=$((major + 1)); minor=0; patch=0; build=0 ;;
+            minor) minor=$((minor + 1)); patch=0; build=0 ;;
+            patch) patch=$((patch + 1)); build=0 ;;
+            build) build=$((build + 1)) ;;
+            *) echo "Unknown bump type." >&2; exit 1 ;;
+          esac
+
+          next="$major.$minor.$patch.$build"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+
+      - name: Bump VERSION, commit and push
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          printf '%s\n' "${{ steps.version.outputs.next }}" > VERSION
+          git add VERSION
+          git commit -m "chore(release): bump version to ${{ steps.version.outputs.next }}"
+          git push origin HEAD:main
+
+          echo "build_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    if: ${{ needs.prepare-release.outputs.release == 'true' }}
+    needs: prepare-release
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.prepare-release.outputs.build_ref }}
+      artifact_name: board-firmware-${{ needs.prepare-release.outputs.next_version }}
+
+  publish-release:
+    if: ${{ needs.prepare-release.outputs.release == 'true' }}
+    needs:
+      - prepare-release
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout versioned source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare-release.outputs.build_ref }}
+
+      - name: Download ESP32-S3 DevKitC-1 image
+        uses: actions/download-artifact@v4
+        with:
+          name: board-firmware-${{ needs.prepare-release.outputs.next_version }}-esp32-s3-devkitc-1
+          path: release-artifacts/esp32-s3-devkitc-1
+
+      - name: Download ESP32-S3 DevKitC-2 image
+        uses: actions/download-artifact@v4
+        with:
+          name: board-firmware-${{ needs.prepare-release.outputs.next_version }}-esp32-s3-devkitc-2
+          path: release-artifacts/esp32-s3-devkitc-2
+
+      - name: Download NodeMCU-32S image
+        uses: actions/download-artifact@v4
+        with:
+          name: board-firmware-${{ needs.prepare-release.outputs.next_version }}-nodemcu-32s
+          path: release-artifacts/nodemcu-32s
+
+      - name: Refresh bin latest and backup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          targets=(esp32-s3-devkitc-1 esp32-s3-devkitc-2 nodemcu-32s)
+          mkdir -p release-assets
+
+          for target in "${targets[@]}"; do
+            incoming="release-artifacts/$target"
+            latest="bin/$target/latest"
+            backup="bin/$target/backup"
+
+            if ! compgen -G "$incoming/*.bin" > /dev/null; then
+              echo "No firmware images found for $target." >&2
+              exit 1
+            fi
+
+            mkdir -p "$latest" "$backup"
+            find "$backup" -maxdepth 1 -type f -name '*.bin' -delete
+            if compgen -G "$latest/*.bin" > /dev/null; then
+              cp -v "$latest"/*.bin "$backup/"
+            fi
+            find "$latest" -maxdepth 1 -type f -name '*.bin' -delete
+            cp -v "$incoming"/*.bin "$latest/"
+
+            for image in "$latest"/*.bin; do
+              cp -v "$image" "release-assets/${target}-$(basename "$image")"
+            done
+          done
+
+      - name: Commit and push bin images
+        id: latest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bin
+
+          if git diff --cached --quiet; then
+            echo "final_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "chore(release): refresh bin images for ${{ needs.prepare-release.outputs.next_version }}"
+          git push origin HEAD:main
+          echo "final_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push version tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ needs.prepare-release.outputs.tag }}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists." >&2
+            exit 1
+          fi
+
+          git tag "$tag" "${{ steps.latest.outputs.final_ref }}"
+          git push origin "$tag"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          name: ${{ needs.prepare-release.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: release-assets/*.bin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

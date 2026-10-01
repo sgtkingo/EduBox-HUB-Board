@@ -2,6 +2,93 @@
 
 Tento dokument popisuje BLE transport mezi **EduBox HUB Boardem** (BLE peripheral) a Panelem (BLE central). BLE je další transport VSCP vedle USB a UART2; nenahrazuje je ani je při startu automaticky nevypíná.
 
+## První spojení
+
+Panel může s deskou EduBox komunikovat přes zabezpečené Bluetooth LE. Deska a
+Panel se spárují jednou; Panel si pak ověřenou desku zapamatuje a při dalších
+relacích se k ní automaticky znovu připojí. Ve třídě s více deskami a Panely
+vždy porovnejte **Board ID zobrazené na Panelu s ID vytištěným na štítku desky**.
+
+### Doporučeno: automatické párování pomocí kabelu
+
+![Default automatic Bluetooth pairing: Panel connected by commissioning cable to Board](img/bluetooth_cable_pairing.svg)
+
+Jde o výchozí a doporučený způsob uvedení do provozu. Kabel slouží pouze
+k identifikaci a autorizaci správné desky. Po spárování běžná komunikace přejde
+na Bluetooth, takže kabel lze odpojit, jakmile se zobrazí obrazovka úspěšného
+dokončení.
+
+1. Zapněte **Panel** a **desku**.
+2. Na Panelu otevřete **Communication** a klepněte na **Wireless (BLE)**.
+3. Pokud si Panel nepamatuje žádnou desku, vyzve vás k připojení kabelem. Propojte
+   desku přímo s Panelem pomocí UART kabelu pro uvedení do provozu.
+4. Počkejte, než Panel načte Board ID a PIN, vyhledá právě tuto desku a dokončí
+   bezpečné Bluetooth párování. PIN není třeba zadávat.
+5. Po zobrazení **Success!** odpojte kabel pro uvedení do provozu a klepněte na
+   **Continue**.
+
+Panel si desku zapamatuje. Při dalších použitích klepnutím na **Wireless (BLE)**
+automaticky spustíte Bluetooth připojení a zobrazí se ukazatel průběhu.
+
+Pokud je připojená deska už spárovaná s jiným Panelem, po výzvě zvolte
+**Forget Board & replace pairing**. Během odstraňování předchozího párování
+z obou zařízení ponechte kabel připojený.
+
+### Ruční párování pomocí Board ID a PINu
+
+Ruční párování použijte, pokud nemáte kabel pro uvedení do provozu. Deska nesmí
+být spárovaná a musí vysílat během párovacího okna. Přesné **Board ID** a
+šestimístný **PIN** jsou vytištěny na štítku desky; při spuštění se také zapisují
+do jejího UART logu.
+
+1. Zapněte desku a umístěte ji blízko Panelu. Pokud párovací okno nespárované
+   desky vypršelo, desku restartujte.
+2. Na Panelu otevřete **Communication**.
+3. Klepněte na malé tlačítko **settings (gear)** vedle položky **Wireless (BLE)**.
+4. Počkejte na dokončení vyhledávání. V případě potřeby klepněte znovu na **Scan**.
+5. Otevřete rozbalovací nabídku desek a vyberte položku, jejíž Board ID přesně
+   odpovídá ID na fyzickém štítku.
+6. Klepněte na zelené tlačítko **Connect**.
+7. Zadejte šestimístný PIN do plovoucího dialogu a potvrďte ho potvrzovací
+   klávesou klávesnice.
+8. Počkejte na **Success!** a pak klepněte na **Continue**.
+
+Pokud je párování už uloženo, tlačítko **Connect** je neaktivní a **Forget
+pairing** je aktivní. Pokud žádné párování uloženo není, platí to naopak. Po
+vyhledání se zapamatovaná deska automaticky vybere, pokud je dostupná.
+
+### Zapomenutí nebo nahrazení párování
+
+Informace o párování jsou uloženy v Panelu i v desce, a proto je nutné je
+odstranit z obou zařízení. Smazání záznamu pouze v Panelu by ponechalo desku
+svázanou s předchozím protějškem.
+
+1. Otevřete **Communication** a klepněte na tlačítko **settings (gear)** vedle
+   položky **Wireless (BLE)**.
+2. Propojte spárovanou desku přímo s Panelem pomocí UART kabelu pro uvedení do
+   provozu a ujistěte se, že je deska zapnutá.
+3. Klepněte na červené tlačítko **Forget pairing** v pravém dolním rohu.
+4. Počkejte, až Panel potvrdí odstranění párování z desky i z Panelu.
+5. Vraťte se do BLE Settings a znovu spusťte vyhledávání a párování, nebo
+   obrazovku zavřete.
+
+### Řešení potíží s Bluetooth
+
+| Zpráva nebo příznak | Co zkontrolovat |
+| --- | --- |
+| `No PAIR response in 5 seconds` | Zkontrolujte napájení desky a přímé UART propojení pro uvedení do provozu, včetně vodičů TX, RX a GND. Znovu připojte kabel a klepněte na **Retry**. |
+| `This Board is already paired` | Ponechte kabel připojený a zvolte **Forget Board & replace pairing**, případně akci zrušte, pokud má stávající párování zůstat zachováno. |
+| Deska se při vyhledávání nenajde podle Board ID | Ověřte, že je deska zapnutá, poblíž a vysílá. Porovnejte ID v nabídce se štítkem, potom nespárovanou desku restartujte a znovu klepněte na **Scan**. |
+| `Pairing failed: check PIN / BOOT reset` | Ověřte všech šest číslic PINu podle štítku desky nebo jejího UART logu při spuštění. Pokud je to možné, upřednostněte automatické párování kabelem. |
+| **Connect** je neaktivní | Panel si už desku pamatuje. Použijte běžné tlačítko **Wireless (BLE)** nebo nejprve odeberte staré párování pomocí **Forget pairing**. |
+| **Forget pairing** je neaktivní | Panel si žádnou desku nepamatuje, takže v něm není místní párování k odstranění. |
+| `Remembered Board is unavailable` | Zkontrolujte, že je spárovaná deska zapnutá a v dosahu. Pokud má být tento Panel přiřazen k jiné desce, použijte postup zapomenutí párování kabelem. |
+| Zapomenutí nebo nahrazení párování selže | Vypněte a znovu zapněte desku, znovu připojte UART kabel pro uvedení do provozu a akci opakujte. Ověřte, že jde o desku, jejíž ID je uloženo v Panelu. Pokud problém přetrvá, podržte tlačítko **BOOT** na desce alespoň 3 sekundy a potom kabelem znovu spusťte **Forget pairing**, aby se odstranil i záznam v Panelu. |
+
+Párování Bluetooth používá ověřené Secure Connections. Není k dispozici
+nezabezpečená záložní možnost staršího párování a Panel po úspěšném spárování
+šestimístný PIN pro uvedení do provozu nikdy neukládá.
+
 ## Co je potřeba
 
 - Firmware musí být sestaven s `EDUBOX_BLE_ENABLED=1` (výchozí hodnota v `src/BoardConfig.hpp`).
@@ -11,7 +98,7 @@ Tento dokument popisuje BLE transport mezi **EduBox HUB Boardem** (BLE periphera
 
 V aktuální konfiguraci je UART2: 115200 Bd, 8N1, RX GPIO18 a TX GPIO17.
 
-## Rychlý postup: první uvedení do provozu
+## Co se děje pod kapotou
 
 1. Zapněte Board a připojte autorizovaný Panel/nástroj k UART2.
 2. Před `INIT` pošlete přes UART2 VSCP požadavek `PAIR`:

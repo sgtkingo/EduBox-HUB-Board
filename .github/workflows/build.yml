@@ -1,0 +1,100 @@
+name: Build Board Firmware
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build.
+        required: false
+        type: string
+        default: ""
+      artifact_name:
+        description: Prefix used for uploaded artifact names.
+        required: false
+        type: string
+        default: board-firmware
+      platformio_version:
+        description: PlatformIO Core version to install.
+        required: false
+        type: string
+        default: "6.1.18"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional git ref to build.
+        required: false
+        type: string
+        default: ""
+      artifact_name:
+        description: Prefix used for uploaded artifact names.
+        required: false
+        type: string
+        default: board-firmware
+      platformio_version:
+        description: PlatformIO Core version to install.
+        required: false
+        type: string
+        default: "6.1.18"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - esp32-s3-devkitc-1
+          - esp32-s3-devkitc-2
+          - nodemcu-32s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PlatformIO
+        run: python -m pip install "platformio==${{ inputs.platformio_version }}"
+
+      - name: Compile firmware
+        run: pio run --environment "${{ matrix.environment }}"
+
+      - name: Validate and collect firmware images
+        shell: bash
+        env:
+          TARGET: ${{ matrix.environment }}
+        run: |
+          set -euo pipefail
+
+          build_dir=".pio/build/$TARGET"
+          output_dir="release-artifacts/$TARGET"
+          required=(firmware.bin bootloader.bin partitions.bin)
+
+          for file in "${required[@]}"; do
+            if [[ ! -f "$build_dir/$file" ]]; then
+              echo "Missing build output: $build_dir/$file" >&2
+              exit 1
+            fi
+          done
+
+          mkdir -p "$output_dir"
+          find "$build_dir" -maxdepth 1 -type f -name '*.bin' -exec cp -v {} "$output_dir/" \;
+          ls -lah "$output_dir"
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}-${{ matrix.environment }}
+          path: release-artifacts/${{ matrix.environment }}/*.bin
+          if-no-files-found: error
+          retention-days: 14
