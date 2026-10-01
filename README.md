@@ -118,7 +118,7 @@ build flagy jsou připnuté v `platformio.ini`.
 
 ### Doporučeno: automatické párování pomocí kabelu
 
-![Default automatic Bluetooth pairing: Panel connected by commissioning cable to Board](img/bluetooth_cable_pairing.svg)
+![Default automatic Bluetooth pairing: Panel connected by commissioning cable to Board](docs/img/bluetooth_cable_pairing.svg)
 
 Jde o výchozí a doporučený způsob uvedení do provozu. Kabel slouží pouze
 k identifikaci a autorizaci správné desky. Po spárování běžná komunikace přejde
@@ -140,6 +140,8 @@ automaticky spustíte Bluetooth připojení a zobrazí se ukazatel průběhu.
 Pokud je připojená deska už spárovaná s jiným Panelem, po výzvě zvolte
 **Forget Board & replace pairing**. Během odstraňování předchozího párování
 z obou zařízení ponechte kabel připojený.
+
+## Pro vývojáře 
 
 Vývojářský postup verzování a vydávání firmware je v
 [release workflow dokumentaci](docs/dev/RELEASE_WORKFLOW.md).
