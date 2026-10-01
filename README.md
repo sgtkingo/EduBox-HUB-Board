@@ -24,7 +24,7 @@ senzorů, ovládání aktuátorů a komunikaci s
 [EduBox HUB App](https://github.com/sgtkingo/EduBox-HUB-App) nebo
 [EduBox HUB Panel](https://github.com/sgtkingo/EduBox-HUB-Panel).
 
-[Dokumentace senzorů](Dokumentace/Senzory_dokumentace.pdf)
+[Dokumentace senzorů](docs/Senzory_dokumentace.pdf)
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32-orange)](https://platformio.org/) 
 [![Board](https://img.shields.io/badge/Board-ESP32--S3--DevKitC--1-blue)](#požadavky) 
@@ -82,9 +82,9 @@ Nastavení pinů probíhá v připojeném GUI (ESP displej/ Windows aplikace)
 > **Detailní informace v dokumentaci**
 
 Architektura protokolu, společný model `Device` a příklady komunikace jsou v
-[`Dokumentace/VSCP_INTEGRATION_ANALYSIS.md`](Dokumentace/VSCP_INTEGRATION_ANALYSIS.md).
+[`docs/dev/VSCP_INTEGRATION_ANALYSIS.md`](docs/dev/VSCP_INTEGRATION_ANALYSIS.md).
 
-[Bezpečnost řízení](Dokumentace/CONTROL_SAFETY.md): první úspěšný INIT získá
+[Bezpečnost řízení](docs/CONTROL_SAFETY.md): první úspěšný INIT získá
 výhradní řízení Boardu. CONNECT nechává aktuátory vypnuté; BYE nebo výpadek
 dohledu zastaví výstupy. Nový klient potřebuje nový INIT a CONNECT.
 
@@ -109,16 +109,9 @@ Závislosti jsou spravované přes `platformio.ini` (např. Adafruit knihovny, D
    framework= arduino
    ```
 
-## Bluetooth bridge (vývojová větev)
+## Bluetooth bridge
 
-Větev `bluetooth_bridge` přidává zabezpečený BLE peripheral vedle USB/UART.
-První pairing vyžaduje náhodný šestimístný PIN z lokální konzole Boardu a je
-otevřený 120 s po bootu nepřiřazené desky. Po normálním bootu lze držením BOOT
-3 s zastavit výstupy, zapomenout bond a restartovat commissioning.
-
-Sestavení bez uploadu: `pio run -e esp32-s3-devkitc-1 -j 4`.
-NimBLE-Arduino 2.5.1 a bezpečnostní build flagy jsou připnuté v platformio.ini.
-Výhradní řízení a fyzická omezení: [CONTROL_SAFETY.md](Dokumentace/CONTROL_SAFETY.md).
-Kompletní vrstvy, pairing a HW checklist:
-[Bluetooth bridge v EduBox-HUB](https://github.com/sgtkingo/EduBox-HUB/blob/bluetooth_bridge/docs/BLUETOOTH_BRIDGE.md).
-Rádio a fyzické výstupy musí být ověřeny na HW; nativní testy je nenahrazují.
+Firmware nabízí zabezpečený BLE peripheral vedle USB/UART. Postup párování,
+reset bondu, provozní chování a řešení potíží popisuje
+[BLE bridge guide](docs/BLE_BRIDGE.md). NimBLE-Arduino 2.5.1 a bezpečnostní
+build flagy jsou připnuté v `platformio.ini`.

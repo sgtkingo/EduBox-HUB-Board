@@ -63,7 +63,7 @@ Po resetu odeberte starý bond také z nastavení Bluetooth původního Panelu, 
 
 ## Diagnostika a řešení potíží
 
-Na UART0/USB-UART (115200 Bd) firmware při startu vypisuje například Board ID, PIN a dobu pairing window. Tento výpis je určen jen pro lokální commissioning; PIN považujte za citlivý. Bližší popis logů je v [UART_DEBUG.md](UART_DEBUG.md).
+Na UART0/USB-UART (115200 Bd) firmware při startu vypisuje například Board ID, PIN a dobu pairing window. Tento výpis je určen jen pro lokální commissioning; PIN považujte za citlivý. Bližší popis logů je v [UART_DEBUG.md](dev/UART_DEBUG.md).
 
 | Projev | Kontrola / náprava |
 | --- | --- |

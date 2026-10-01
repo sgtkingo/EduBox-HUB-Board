@@ -16,9 +16,9 @@ Otevřete Serial Monitor na USB-UART portu. RX/TX jsou z pohledu Boardu. Při ve
 
 ## Python monitor
 
-Nástroj je v `Apps/emulator/monitor.py`, používá stejné `requirements.txt` jako emulátor:
+Nástroj je v `apps/emulator/monitor.py`, používá stejné `requirements.txt` jako emulátor:
 
-    cd Apps/emulator
+    cd apps/emulator
     python -m pip install -r requirements.txt
     python monitor.py --ports
     python monitor.py --port COM4

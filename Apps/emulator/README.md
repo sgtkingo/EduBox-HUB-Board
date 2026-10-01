@@ -7,7 +7,7 @@ Serial nebo UART2. Podporuje příkazy `INIT`, `CONNECT`, `DISCONNECT`, `UPDATE`
 ## Instalace
 
 ```powershell
-cd Apps\emulator
+cd apps\emulator
 py -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 ```
@@ -24,7 +24,7 @@ být ve Windows otevřený dvěma programy současně.
     python monitor.py --port COM4 --levels ERROR,WARN
     python monitor.py --port COM4 --timestamps --log monitor.log
 
-Ukončení přes Ctrl+C. Bez `--port` se vybere jediný dostupný port. Podrobnosti a další filtry jsou v [UART_DEBUG.md](../../Dokumentace/UART_DEBUG.md).
+Ukončení přes Ctrl+C. Bez `--port` se vybere jediný dostupný port. Podrobnosti a další filtry jsou v [UART_DEBUG.md](../../docs/dev/UART_DEBUG.md).
 
 ## Připojení k firmware
 
