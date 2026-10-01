@@ -219,5 +219,27 @@ int main() {
   const auto seqResponse = request(seqServer, seqWire, "?type=CONFIG&id=S01&unit=C&seq=99");
   assert(seqResponse.parameters.at("seq") == "99");
   assert(sensor.configured.size() == 1 && sensor.configured[0].key == "unit");
+  // hold=0 suppresses Board probes and idle expiry, while explicit BYE still releases control.
+  Sensor quietSensor;
+  RegisteredDevice quietDevices[] = {{"S09", &quietSensor}};
+  Wire quietWire;
+  vscp::Server quietServer; quietServer.addTransport(quietWire);
+  VscpDeviceRouter quietRouter(quietDevices, 1, 10000, 3000, 500, clockMs);
+  quietRouter.registerHandlers(quietServer);
+  nowMs = 0;
+  assert(request(quietServer, quietWire, "?type=INIT&api=1.7&hold=2").status == vscp::Status::Error);
+  assert(request(quietServer, quietWire, "?type=INIT&api=1.7&hold=0").status == vscp::Status::Ok);
+  assert(request(quietServer, quietWire, "?type=CONNECT&id=S09&pins=7").status == vscp::Status::Ok);
+  const size_t quietFrames = quietWire.outgoing.size();
+  nowMs = 60000; quietRouter.poll();
+  assert(quietDevices[0].connected && quietWire.outgoing.size() == quietFrames);
+  assert(!quietServer.ping(quietWire, 500));
+  assert(request(quietServer, quietWire, "?type=PING&seq=7").status == vscp::Status::Ok);
+  assert(request(quietServer, quietWire, "?type=INIT&api=1.7&hold=1").status == vscp::Status::Ok);
+  nowMs = 63000; quietRouter.poll();
+  assert(vscp::Codec::parseRequest(quietWire.outgoing.back(), ping, error));
+  assert(ping.command == vscp::Command::Ping);
+  quietWire.incoming.push_back("?type=BYE&side=client"); quietServer.poll();
+  assert(!quietDevices[0].connected);
   std::cout << "PASS ownership, lease, heartbeat, link loss, GPIO protection and actuator lifecycle\n";
 }

@@ -3,7 +3,7 @@ import threading
 from unittest.mock import patch
 
 from emulator import EmulatorError, build_request, parse_assignments, parse_response
-from emulator import API_VERSION, LIBRARY_VERSION, SerialLineTransport, shell_input
+from emulator import API_VERSION, LIBRARY_VERSION, SerialLineTransport, VscpClient, create_parser, shell_input
 
 
 class CodecTests(unittest.TestCase):
@@ -64,6 +64,19 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(wire._serial.sent, ["?type=PING&side=client&seq=22", "?side=client&seq=7&status=1"])
         wire._serial.lines.extend(("?side=server&seq=22&status=1", "?api=1.7&status=1"))
         self.assertEqual(wire.exchange("?type=INIT&api=1.7"), "?api=1.7&status=1")
+
+    def test_init_defaults_to_hold_zero_and_accepts_hold_one(self):
+        wire = self.transport(("?api=1.7&status=1", "?api=1.7&status=1"))
+        client = VscpClient(wire)
+        self.assertTrue(client.init().ok)
+        self.assertIn("&hold=0", wire._serial.sent[0])
+        self.assertTrue(client.init(hold=True).ok)
+        self.assertIn("&hold=1", wire._serial.sent[1])
+
+    def test_scenario_hold_option_defaults_to_zero_and_accepts_one(self):
+        parser = create_parser()
+        self.assertEqual(parser.parse_args(["scenario"]).hold, "0")
+        self.assertEqual(parser.parse_args(["scenario", "--hold", "1"]).hold, "1")
 
     def test_bye_is_one_way_and_requires_new_init(self):
         wire = self.transport()

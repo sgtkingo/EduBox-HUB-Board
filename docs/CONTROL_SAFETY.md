@@ -23,7 +23,11 @@ V `src/BoardConfig.hpp` jsou nastavení:
 - `vscpControlProbeTimeoutMs = 500`: timeout odpovědi na jeden PING.
 
 Běžný požadavek vlastníka nebo správná odpověď na Board PING obnoví dohled.
-Nečinný klient proto musí obsluhovat příchozí PING: C++ klient pomocí `Client::poll()`.
+INIT s `hold=0` vypne pro danou relaci Boardem zahajované PINGy i časový dohled
+nečinnosti. Chybějící `hold` znamená `hold=1`; opakovaný úspěšný INIT může
+výchozí dohled obnovit. BYE nebo fyzická ztráta spojení stále vypnou výstupy a
+uvolní řízení. Při `hold=0` proto klient musí při ukončení poslat BYE.
+Při výchozím `hold=1` musí nečinný klient obsluhovat příchozí PING: C++ klient pomocí `Client::poll()`.
 Panel tuto obsluhu volá jen v platné, neztracené relaci. Po lokálním ukončení
 nebo ztrátě relace už nesmí odpovídáním na PING prodlužovat běh výstupů.
 Úspěšné předání zápisu nepotvrzuje doručení protistraně.

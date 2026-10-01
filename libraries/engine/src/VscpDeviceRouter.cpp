@@ -39,7 +39,7 @@ void VscpDeviceRouter::registerHandler(vscp::Server& server, vscp::Command comma
       return vscp::Response::fail("Control session required: send INIT");
     auto response = (this->*handler)(request);
     if (command == vscp::Command::Init) {
-      if (response.status == vscp::Status::Ok) session_->acquire(transport);
+      if (response.status == vscp::Status::Ok) session_->acquire(transport, request.value("hold") != "0");
       else if (session_->owns(transport)) stopAllDevices();
     } else session_->activity(transport);
     return response;
@@ -117,6 +117,9 @@ std::vector<DeviceParameter> VscpDeviceRouter::operationParameters(const vscp::R
 }
 
 vscp::Response VscpDeviceRouter::handleInit(const vscp::Request& request) {
+  if (request.has("hold") && request.value("hold") != "0" && request.value("hold") != "1") {
+    return vscp::Response::fail("Invalid hold: expected 0 or 1");
+  }
   const String requestedApi = request.value("api");
   if (requestedApi.length() > 0 && requestedApi != vscp::API_VERSION) {
     return vscp::Response::fail(String("API mismatch: expected ") + vscp::API_VERSION);

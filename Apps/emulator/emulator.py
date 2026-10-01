@@ -311,8 +311,10 @@ class VscpClient:
         print("TX  ?type=BYE&side=client")
         self.transport.bye()
 
-    def init(self, app: str = "python-emulator", database: str = "1.3") -> ProtocolResponse:
-        return self.request("INIT", {"api": API_VERSION, "app": app, "db": database})
+    def init(self, app: str = "python-emulator", database: str = "1.3", hold: bool = False) -> ProtocolResponse:
+        parameters = {"api": API_VERSION, "app": app, "db": database}
+        parameters["hold"] = "1" if hold else "0"
+        return self.request("INIT", parameters)
 
     def connect(self, uid: str, pins: str) -> ProtocolResponse:
         return self.request("CONNECT", {"id": uid, "pins": pins})
@@ -340,7 +342,7 @@ def run_scenario(client: VscpClient, args: argparse.Namespace) -> None:
     config = parse_assignments(args.config)
     control = parse_assignments(args.control)
 
-    require_ok(client.init(args.app, args.database), "INIT")
+    require_ok(client.init(args.app, args.database, args.hold == "1"), "INIT")
     require_ok(client.connect(args.sensor_id, args.sensor_pins), "CONNECT sensoru")
     try:
         require_ok(client.config(args.sensor_id, config), "CONFIG")
@@ -359,7 +361,7 @@ def run_scenario(client: VscpClient, args: argparse.Namespace) -> None:
 
 
 SHELL_HELP = """Příkazy:
-  init [app=python-emulator] [db=1.3]
+  init [app=python-emulator] [db=1.3] [hold=0|1]  výchozí hold=0
   connect UID PINY                  např. connect S03 7
   disconnect UID
   ping
@@ -409,7 +411,10 @@ def run_shell(client: VscpClient) -> None:
                 print(SHELL_HELP)
             elif command == "init":
                 values = parse_assignments(arguments)
-                client.init(values.get("app", "python-emulator"), values.get("db", "1.3"))
+                hold = values.get("hold", "0")
+                if hold not in ("0", "1"):
+                    raise EmulatorError("hold must be 0 or 1")
+                client.init(values.get("app", "python-emulator"), values.get("db", "1.3"), hold == "1")
             elif command == "ping" and not arguments:
                 client.ping()
             elif command == "bye" and not arguments:
@@ -452,6 +457,7 @@ def create_parser() -> argparse.ArgumentParser:
     scenario = subparsers.add_parser("scenario", help="provede automatický test všech příkazů")
     scenario.add_argument("--app", default="python-emulator")
     scenario.add_argument("--database", default="1.3")
+    scenario.add_argument("--hold", choices=("0", "1"), default="0")
     scenario.add_argument("--sensor-id", default="S03", help="výchozí analogový Hallův senzor")
     scenario.add_argument("--sensor-pins", default="7")
     scenario.add_argument("--config", action="append", default=["res=12"], metavar="KEY=VALUE")

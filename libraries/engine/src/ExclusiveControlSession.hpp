@@ -15,13 +15,15 @@ public:
       : server_(server), stopDevices_(std::move(stopDevices)), clock_(clock),
         leaseMs_(leaseMs), probeIntervalMs_(probeIntervalMs), probeTimeoutMs_(probeTimeoutMs) {}
 
-  bool acquire(vscp::Transport& transport) {
+  bool acquire(vscp::Transport& transport, bool hold = true) {
     if (owner_ && owner_ != &transport) return false;
     if (!owner_) {
       owner_ = &transport;
       probePending_ = false;
       lastProbeMs_ = clock_();
     }
+    hold_ = hold;
+    if (!hold_) probePending_ = false;
     activity(transport);
     return true;
   }
@@ -37,9 +39,11 @@ public:
     stopDevices_(); // Keep ownership locked until outputs have been stopped.
     owner_ = nullptr;
     probePending_ = false;
+    hold_ = true;
   }
   void poll() {
     if (!owner_) return;
+    if (!hold_) return; // Explicit INIT hold=0 disables server probes and idle expiry.
     const uint32_t now = clock_();
     if (probePending_) {
       const auto state = server_.pingResult(*owner_).state;
@@ -71,4 +75,5 @@ private:
   vscp::Transport* owner_ = nullptr;
   uint32_t lastAliveMs_ = 0, lastProbeMs_ = 0;
   bool probePending_ = false;
+  bool hold_ = true;
 };
