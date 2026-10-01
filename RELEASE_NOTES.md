@@ -1,5 +1,7 @@
 # EduBox HUB Board – poznámky k vydání
 
+# v1.0.0.1
+
 ## Bluetooth bridge a VSCP 1.7
 
 - Přidán zabezpečený Bluetooth bridge pro komunikaci s Panelem, včetně párování,
